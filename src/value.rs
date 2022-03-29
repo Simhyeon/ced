@@ -6,6 +6,16 @@ pub enum Value {
     Text(String),
 }
 
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let out = match self {
+            Self::Number(num) => num.to_string(),
+            Self::Text(txt) => txt.to_string(),
+        };
+        write!(f,"{}",out)
+    }
+}
+
 // This struct should not expose value directly
 // because some limiters are mutually exclusive.
 #[derive(Default)]

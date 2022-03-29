@@ -1,13 +1,41 @@
 use crate::value::{Value, ValueType, ValueLimiter};
 use crate::error::{CedError, CedResult};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 pub(crate) struct VirtualData {
-    columns: Vec<Column>,
-    rows: Vec<Row>,
+    pub(crate) columns: Vec<Column>,
+    pub(crate) rows: Vec<Row>,
+}
+
+impl std::fmt::Display for VirtualData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut csv_src = String::new();
+        let column_row = self.columns.iter().map(|c| c.name.as_str()).collect::<Vec<&str>>().join(",") + "\n";
+        csv_src.push_str(&column_row);
+
+        let columns = self.columns.iter().map(|col| col.name.as_str()).collect::<Vec<&str>>();
+        for row in &self.rows {
+            let row_value = columns.iter().map(|name| {
+                row.get_value(name)
+                    .unwrap_or(&Value::Text(String::new()))
+                    .to_string()
+            }).collect::<Vec<String>>()
+            .join(",") + "\n";
+
+            csv_src.push_str(&row_value);
+        }
+        write!(f,"{}",csv_src)
+    }
 }
 
 impl VirtualData {
+    pub fn new() -> Self {
+        Self {
+            columns: vec![],
+            rows: vec![],
+        }
+    }
     pub fn set_data_from_raw(&mut self, x: usize, y: usize, value : &str)  -> CedResult<()> {
         let key_column = self.get_column_if_valid(x, y)?;
         match key_column.column_type {
@@ -15,7 +43,7 @@ impl VirtualData {
             ValueType::Number => self.set_data(x,y,
                 Value::Number(
                     value.parse().
-                    map_err(|_| CedError::InvalidCellData)?
+                    map_err(|_| CedError::InvalidCellData(format!("Given value is \"{}\" which is not a number", value)))?
                 )
             ),
         }
@@ -25,26 +53,31 @@ impl VirtualData {
     pub fn set_data(&mut self, x: usize, y: usize, value : Value) -> CedResult<()>  {
         let id = self.get_column_if_valid(x, y)?.id.to_string();
 
-        if self.is_valid_column_data(y, &value) {
-            self.rows[x].update_value(&id, value);
-        } else { 
-            return Err(CedError::InvalidCellData); 
-        }
+        self.is_valid_column_data(y, &value)?;
+        self.rows[x].update_value(&id, value);
 
         Ok(())
     }
 
     // THis should insert row with given column limiters
-    pub fn insert_row(&mut self, row: usize) {
+    pub fn insert_row(&mut self, row: usize, source : Option<&Vec<Value>>) -> CedResult<()> {
         let mut new_row = Row::new();
-        for col in &self.columns {
-            new_row.insert_value(&col.id, col.get_default_value());
+        if let Some(source) = source {
+            self.check_row_length(source)?;
+            self.columns.iter().zip(source.iter()).for_each(|(col,v)| new_row.insert_value(&col.name, v.clone()));
+        } else {
+            for col in &self.columns {
+                new_row.insert_value(&col.id, col.get_default_value());
+            }
         }
         self.rows.insert(row, new_row);
+        Ok(())
     }
 
-    pub fn delete_row(&mut self, row: usize) {
-        self.rows.remove(row);
+    pub fn delete_row(&mut self, row: usize) -> Option<Row> {
+        let row_count = self.get_row_count();
+        if row_count == 0 || row_count < row { return None; }
+        Some(self.rows.remove(row))
     }
 
     pub fn insert_column(&mut self, column : usize, column_name: &str, column_type: ValueType, limiter: Option<ValueLimiter>) {
@@ -66,9 +99,10 @@ impl VirtualData {
         Ok(())
     }
     
-    pub fn is_valid_cell_coordinate(&self, x:usize,y:usize) -> bool {
-        if x >= 0 && x <= self.get_row_count() {
-            if y >= 0 && y <= self.get_column_count() {
+    // <DRY>
+    fn is_valid_cell_coordinate(&self, x:usize,y:usize) -> bool {
+        if x <= self.get_row_count() {
+            if y <= self.get_column_count() {
                 return true;
             }
         }
@@ -76,7 +110,7 @@ impl VirtualData {
         false
     }
 
-    pub fn get_column_if_valid(&self, x: usize, y: usize) -> CedResult<&Column> {
+    fn get_column_if_valid(&self, x: usize, y: usize) -> CedResult<&Column> {
         if !self.is_valid_cell_coordinate(x, y) {
              return Err(CedError::OutOfRangeError); 
         }
@@ -85,11 +119,21 @@ impl VirtualData {
     }
 
     // TODO
-    pub fn is_valid_column_data(&self, column: usize,value: &Value) -> bool {
-        false
+    fn is_valid_column_data(&self, column: usize,value: &Value) -> CedResult<()> {
+        Ok(())
     }
 
+    fn check_row_length(&self, values : &Vec<Value>) -> CedResult<()> {
+        match self.get_column_count().cmp(&values.len()) {
+            Ordering::Equal => (),
+            Ordering::Less | Ordering::Greater => return Err(CedError::InvalidRowData(format!(r#"Given row length is "{}" while columns length is "{}""#, values.len(), self.get_column_count()))),
+        }
+        Ok(())
+    }
 
+    // </DRY>
+
+    // <EXT>
     pub fn get_row_count(&self) -> usize {
         self.rows.len()
     }
@@ -97,20 +141,22 @@ impl VirtualData {
     pub fn get_column_count(&self) -> usize {
         self.columns.len()
     }
+    // </EXT>
 }
 
 pub struct Column {
-    name       : String,
-    id         : String,
-    column_type: ValueType,
-    limiter    : ValueLimiter,
+    pub(crate) name       : String,
+    pub(crate) id         : String,
+    pub(crate) column_type: ValueType,
+    pub(crate) limiter    : ValueLimiter,
 }
 
 impl Column {
     pub fn new(name: &str, column_type: ValueType, limiter: Option<ValueLimiter>) -> Self {
         Self {
             name: name.to_string(),
-            id: String::new(),
+            // TODO
+            id: String::new(), // This has to be randomly generated with uniqueness
             column_type,
             limiter: limiter.unwrap_or(ValueLimiter::default()),
         }
