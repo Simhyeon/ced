@@ -1,4 +1,4 @@
-use crate::{processor::Processor, error::{CedResult, CedError}};
+use crate::{processor::Processor, error::{CedResult, CedError}, value::{ValueType, Value}};
 use super::utils;
 use std::{path::Path, ops::Sub};
 
@@ -9,21 +9,21 @@ use std::{path::Path, ops::Sub};
 // Append selection variant
 #[derive(PartialEq, Debug)]
 pub enum CommandType {
-    Undo, // Undo last command
-    Redo, // Redo undid command
-    Create, // Crate table
+    Version,
+    Help,
+    Undo, // TODO
+    Redo, // TODO
+    Create,
     Overwrite,
     Read,
     AddRow,
     AddColumn,
-    RemoveRow,
-    RemoveColumn,
-    ClearCell,
-    ClearColumn,
-    ClearRow,
+    DeleteRow, 
+    DeleteColumn,
     EditCell,
-    EditColumn,
-    EditRow,
+    EditColumn, // TODO
+    RenameColumn, // TODO
+    EditRow, // TODO
     Exit,
     Print,
     None,
@@ -32,16 +32,21 @@ pub enum CommandType {
 impl CommandType {
     pub fn from_str(src: &str) -> Self {
         let command_type = match src.to_lowercase().trim() {
+            "version" | "v" => Self::Version,
+            "help" | "h" => Self::Help,
             "read" | "r" => Self::Read,
-            "create" => Self::Create,
+            "create" | "c" => Self::Create,
             "overwrite" | "ow" => Self::Overwrite,
             "print" | "p" => Self::Print,
             "add-row" | "ar"   => Self::AddRow,
-            "remove-row" | "rr"   => Self::RemoveRow,
+            "delete-row" | "dr"   => Self::DeleteRow,
             "add-column" | "ac" => Self::AddColumn,
-            "remove-column" | "rc"   => Self::RemoveColumn,
+            "delete-column" | "dc"   => Self::DeleteColumn,
             "edit" | "e" => Self::EditCell,
             "exit" | "x" => Self::Exit,
+            "edit-column" | "ec" => Self::EditColumn,
+            "edit-row" | "er" => Self::EditRow,
+            "rename-column" | "rc" => Self::RenameColumn,
             _ => Self::None,
         };
         command_type
@@ -90,6 +95,7 @@ impl CommandLoop {
 
     pub fn start_loop(&mut self) -> CedResult<()> {
         let mut command = Command::default();
+        utils::write_to_stdout("Ced, a csv editor\n")?;
         while CommandType::Exit != command.command_type {
             utils::write_to_stdout(">> ")?;
             command = Command::from_str(&utils::read_stdin()?)?;
@@ -109,15 +115,53 @@ impl CommandLoop {
 impl Processor {
     pub fn execute_command(&mut self, command: &Command) -> CedResult<()> {
         match command.command_type {
+            CommandType::Version => utils::write_to_stdout("ced, 0.1.0\n")?,
+            CommandType::Help => utils::write_to_stdout(include_str!("../../src/help.txt"))?,
             CommandType::Read => self.read_file_from_args(&command.arguments)?,
+            CommandType::Overwrite => self.overwrite()?,
             CommandType::Create => self.create_columns_fast(&command.arguments),
             CommandType::Print => self.print()?,
             CommandType::AddRow => self.add_row_from_args(&command.arguments)?,
-            CommandType::RemoveRow => self.remove_row_from_args(&command.arguments)?,
-            CommandType::Overwrite => self.overwrite()?,
-            CommandType::AddColumn => (),
+            CommandType::DeleteRow => self.remove_row_from_args(&command.arguments)?,
+            CommandType::DeleteColumn => self.remove_column_from_args(&command.arguments)?,
+            CommandType::AddColumn => self.add_column_from_args(&command.arguments)?,
+            CommandType::EditCell => self.edit_cell_from_args(&command.arguments)?,
+            CommandType::EditRow => self.edit_cell_from_args(&command.arguments)?,
+            CommandType::EditColumn => self.edit_cell_from_args(&command.arguments)?,
             _ => (),
         }
+        Ok(())
+    }
+
+    fn edit_row_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        if args.len() < 2 {
+            return Err(CedError::CliError(format!("Insufficient arguments for row-edit")));
+        }
+
+        let row_number = &args[0].parse::<usize>().map_err(|_|CedError::CliError(format!("\"{}\" is not a valid row number", args[0])))?;
+        let value = &args[1];
+
+        // self.edit_cell(row, column, value)?;
+
+        Ok(())
+    }
+
+    fn edit_cell_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        if args.len() < 1 {
+            return Err(CedError::CliError(format!("Edit needs coordinate")));
+        }
+
+        let coord = &args[0].split(',').collect::<Vec<&str>>();
+        let value = if args.len() >= 2{&args[1]} else { "" };
+        if coord.len() != 2 {
+            return Err(CedError::CliError(format!("Cell cooridnate should be in a form of \"row,column\"")));
+        }
+
+        let row = coord[0].parse::<usize>().map_err(|_|CedError::CliError(format!("\"{}\" is not a valid row number", coord[0])))?;
+        let column = coord[1].parse::<usize>().map_err(|_|CedError::CliError(format!("\"{}\" is not a valid column number", coord[1])))?;
+
+        self.edit_cell(row, column, value)?;
+
         Ok(())
     }
 
@@ -129,16 +173,49 @@ impl Processor {
         Ok(())
     }
 
+    fn add_column_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        let column_name;
+        let mut column_number = self.data.get_column_count();
+        let mut column_type = ValueType::Text;
+
+        if args.len() == 0 {
+            return Err(CedError::CliError(format!("Cannot add column without name")));
+        }
+
+        column_name = args[0].as_str();
+
+        if args.len() >= 2 {
+            column_number = args[1].parse::<usize>().map_err(|_|CedError::CliError(format!("\"{}\" is not a valid column number", args[1])))?;
+        }
+        if args.len() >= 3 {
+            column_type = ValueType::from_str(&args[2]);
+        }
+
+        self.add_column(column_number, column_name, column_type, None);
+        Ok(())
+    }
+
     fn remove_row_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
         let row_count = if args.len() == 0 {
             self.data.get_row_count()
         } else {
-            args[0].parse::<usize>().map_err(|_| CedError::CliError(format!("Argument \"{}\" is not a valid index", args[0])))?
+            args[0].parse::<usize>().map_err(|_| CedError::CliError(format!("\"{}\" is not a valid index", args[0])))?
         }.sub(1);
 
         if let None = self.remove_row(row_count) {
             utils::write_to_stderr("No such row to remove\n")?;
         }
+        Ok(())
+    }
+
+    fn remove_column_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        let column_count = if args.len() == 0 {
+            self.data.get_column_count()
+        } else {
+            args[0].parse::<usize>().map_err(|_| CedError::CliError(format!("\"{}\" is not a valid index", args[0])))?
+        }.sub(1);
+
+        self.remove_column(column_count)?;
         Ok(())
     }
 
@@ -158,15 +235,28 @@ impl Processor {
         let csv = self.data.to_string();
         // TODO
         // self.print_with_printer(&csv_src);
-        self.print_with_numbers(&csv);
+        self.print_with_numbers(&csv)?;
 
         Ok(())
     }
 
-    fn print_with_numbers(&self, csv: &str) {
+    fn print_with_numbers(&self, csv: &str) -> CedResult<()> {
         // TODO
         // Print columns numbers
         // Print row numbers
-        print!("{}", csv);
+        let mut iterator = csv.lines().enumerate();
+
+        let header = iterator.next().unwrap().1;
+        let header_with_number = format!("-> {}\n",header.split(',').enumerate().map(|(i,h)| format!("[{}]-{}",i,h)).collect::<Vec<String>>().join(","));
+        utils::write_to_stdout(&header_with_number)?;
+
+        for (index, line) in iterator {
+            if index == 0 {
+                utils::write_to_stdout(&format!("- | {}\n",line))?;
+            } else {
+                utils::write_to_stdout(&format!("{} | {}\n",index-1,line))?;
+            }
+        }
+        Ok(())
     }
 }

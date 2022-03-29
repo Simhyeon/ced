@@ -51,10 +51,10 @@ impl VirtualData {
 
     /// Set data by coordinate
     pub fn set_data(&mut self, x: usize, y: usize, value : Value) -> CedResult<()>  {
-        let id = self.get_column_if_valid(x, y)?.id.to_string();
+        let name = self.get_column_if_valid(x, y)?.name.to_owned();
 
         self.is_valid_column_data(y, &value)?;
-        self.rows[x].update_value(&id, value);
+        self.rows[x].update_value(&name, value);
 
         Ok(())
     }
@@ -67,7 +67,7 @@ impl VirtualData {
             self.columns.iter().zip(source.iter()).for_each(|(col,v)| new_row.insert_value(&col.name, v.clone()));
         } else {
             for col in &self.columns {
-                new_row.insert_value(&col.id, col.get_default_value());
+                new_row.insert_value(&col.name, col.get_default_value());
             }
         }
         self.rows.insert(row, new_row);
@@ -84,25 +84,32 @@ impl VirtualData {
         let new_column = Column::new(column_name,column_type, limiter);
         let default_value = new_column.get_default_value();
         for row in &mut self.rows {
-            row.insert_value(&new_column.id, default_value.clone());
+            row.insert_value(&new_column.name, default_value.clone());
         }
         self.columns.insert(column, new_column);
     }
 
     pub fn delete_column(&mut self, column : usize) -> CedResult<()> {
-        let id = self.get_column_if_valid(0, column)?.id.to_string();
+        let name = self.get_column_if_valid(0, column)?.name.to_owned();
 
         for row in &mut self.rows {
-            row.remove_value(&id);
+            row.remove_value(&name);
         }
+
         self.columns.remove(column);
+
+        // If column is empty, drop all rows
+        if self.get_column_count() == 0 {
+            self.rows = vec![];
+        }
+
         Ok(())
     }
     
     // <DRY>
     fn is_valid_cell_coordinate(&self, x:usize,y:usize) -> bool {
-        if x <= self.get_row_count() {
-            if y <= self.get_column_count() {
+        if x < self.get_row_count() {
+            if y < self.get_column_count() {
                 return true;
             }
         }
@@ -146,7 +153,6 @@ impl VirtualData {
 
 pub struct Column {
     pub(crate) name       : String,
-    pub(crate) id         : String,
     pub(crate) column_type: ValueType,
     pub(crate) limiter    : ValueLimiter,
 }
@@ -155,8 +161,6 @@ impl Column {
     pub fn new(name: &str, column_type: ValueType, limiter: Option<ValueLimiter>) -> Self {
         Self {
             name: name.to_string(),
-            // TODO
-            id: String::new(), // This has to be randomly generated with uniqueness
             column_type,
             limiter: limiter.unwrap_or(ValueLimiter::default()),
         }

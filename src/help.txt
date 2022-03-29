@@ -1,0 +1,11 @@
+Ced, 0.1.0
+
+Ced is a csv editor interface.
+
+* Commands
+
+read, r
+	Reads csv file into ced.
+
+add-row, ar <Index> <Row>
+	Add new row into given index

@@ -56,3 +56,10 @@ pub enum ValueType {
     Text,
 }
 
+impl ValueType {
+    pub fn from_str(src : &str) -> Self {
+        if src.to_lowercase().as_str() == "number" {
+            Self::Number
+        } else { Self::Text }
+    }
+}

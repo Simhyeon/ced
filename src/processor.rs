@@ -59,22 +59,7 @@ impl Processor {
     }
 
     // TODO
-    pub fn clear_cell(&mut self,x: usize, y: usize) {
-
-    }
-
-    // TODO
     pub fn edit_row(&mut self) {
-
-    }
-
-    // TODO
-    pub fn clear_row(&mut self) {
-
-    }
-
-    // TODO
-    pub fn clear_column(&mut self) {
 
     }
 
@@ -108,6 +93,13 @@ impl Processor {
     pub fn add_row_from_vector(&mut self, src: &Vec<impl AsRef<str>>) -> CedResult<()> {
         let values = src.iter().map(|a| Value::Text(a.as_ref().to_string())).collect::<Vec<Value>>();
         self.add_row(self.data.get_row_count(), Some(&values))?;
+        Ok(())
+    }
+
+    // TODO
+    pub fn edit_row_from_vector(&mut self, src: &Vec<impl AsRef<str>>) -> CedResult<()> {
+        // let values = src.iter().map(|a| Value::Text(a.as_ref().to_string())).collect::<Vec<Value>>();
+        // self.edit_row(self.data.get_row_count(), Some(&values))?;
         Ok(())
     }
 
