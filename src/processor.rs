@@ -58,9 +58,14 @@ impl Processor {
         Ok(())
     }
 
-    // TODO
-    pub fn edit_row(&mut self) {
+    pub fn edit_column(&mut self, column : &str, input: &str) -> CedResult<()> {
+        self.data.set_column(column,Value::Text(input.to_owned()))?;
+        Ok(())
+    }
 
+    pub fn edit_row(&mut self, row_number: usize, input: &str) -> CedResult<()> {
+        self.data.set_row(row_number, input.split(",").map(|s| Value::Text(s.to_owned())).collect())?;
+        Ok(())
     }
 
     pub fn move_cursor(&mut self, direction: Direction) {
@@ -107,6 +112,11 @@ impl Processor {
         for col in columns {
             self.add_column(self.data.get_column_count(), &col.as_ref(), ValueType::Text, None);
         }
+    }
+
+    pub fn rename_column(&mut self, column : &str, new_name: &str) -> CedResult<()> {
+        self.data.rename_column(column, new_name)?;
+        Ok(())
     }
 }
 

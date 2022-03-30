@@ -49,6 +49,54 @@ impl VirtualData {
         }
     }
 
+    pub fn rename_column(&mut self, column: &str, new_name: &str) -> CedResult<()> {
+        let column_index = self.get_column_index(column);
+
+        if let None = column_index {
+            return Err(CedError::OutOfRangeError);
+        }
+
+        let previous = self.columns[column_index.unwrap()].rename(new_name);
+        for row in &mut self.rows {
+            row.rename_column(&previous, new_name);
+        }
+        Ok(())
+    }
+
+    // TODO
+    // 1. Check limiter
+    // 2. Check if value exists
+    pub fn set_column(&mut self, column: &str, value: Value)  -> CedResult<()> {
+        let column_index = self.get_column_index(column);
+        if let None = column_index {
+            return Err(CedError::OutOfRangeError);
+        }
+        let column = &self.columns[column_index.unwrap()].name;
+        for row in &mut self.rows {
+            row.update_value(column, value.clone());
+        }
+        Ok(())
+    }
+
+    // TODO
+    // 1. Check limiter
+    // 2. Check if value exists
+    pub fn set_row(&mut self, row_number: usize, values : Vec<Value>)  -> CedResult<()> {
+        if values.len() != self.get_column_count() {
+             return Err(CedError::InsufficientRowData); 
+        }
+        if !self.is_valid_cell_coordinate(row_number, 0) { 
+             return Err(CedError::OutOfRangeError); 
+        }
+
+        let row = self.rows.get_mut(row_number).unwrap();
+        for (col,value) in self.columns.iter().zip(values.iter()) {
+            row.update_value(&col.name, value.clone())
+        }
+
+        Ok(())
+    }
+
     /// Set data by coordinate
     pub fn set_data(&mut self, x: usize, y: usize, value : Value) -> CedResult<()>  {
         let name = self.get_column_if_valid(x, y)?.name.to_owned();
@@ -107,6 +155,14 @@ impl VirtualData {
     }
     
     // <DRY>
+    fn get_column_index(&self, src: &str) -> Option<usize> {
+        let column_index = match src.parse::<usize>() {
+            Err(_) => self.columns.iter().position(|c| c.name == src),
+            Ok(index) => Some(index),
+        };
+        column_index
+    }
+
     fn is_valid_cell_coordinate(&self, x:usize,y:usize) -> bool {
         if x < self.get_row_count() {
             if y < self.get_column_count() {
@@ -166,6 +222,10 @@ impl Column {
         }
     }
 
+    pub fn rename(&mut self, new_name: &str) -> String {
+        std::mem::replace(&mut self.name, new_name.to_string())
+    }
+
     pub fn set_limiter(&mut self, limiter: ValueLimiter) {
         self.limiter = limiter;
     }
@@ -213,6 +273,15 @@ impl Row {
         Self {
             values: HashMap::new(),
         }
+    }
+
+    pub fn rename_column(&mut self, name: &str, new_name: &str) {
+        let previous = self.values.remove(name);
+
+        if let Some(prev) = previous {
+            self.values.insert(new_name.to_string(), prev);
+        }
+
     }
     
     pub fn insert_value(&mut self, key: &str, value: Value) {

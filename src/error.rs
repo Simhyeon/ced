@@ -4,16 +4,18 @@ pub type CedResult<T> = Result<T,CedError>;
 
 #[derive(Error, Debug)]
 pub enum CedError {
-    #[error("IO Error : {0}")]
+    #[error("ERR : IO Error =\n{0}")]
     IoError(IoErrorWithMeta),
-    #[error("Index out of range")]
+    #[error("ERR : Index out of range")]
     OutOfRangeError,
-    #[error("Invalid row data =\n{0}")]
+    #[error("ERR : Insufficient row data")]
+    InsufficientRowData,
+    #[error("ERR : Invalid row data =\n{0}")]
     InvalidRowData(String),
-    #[error("Invalid cell data =\n{0}")]
+    #[error("ERR : Invalid cell data =\n{0}")]
     InvalidCellData(String),
     #[cfg(feature="cli")]
-    #[error("Command line error {0}")]
+    #[error("ERR : Command line error =\n{0}")]
     CliError(String),
 }
 

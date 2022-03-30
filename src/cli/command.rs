@@ -21,9 +21,9 @@ pub enum CommandType {
     DeleteRow, 
     DeleteColumn,
     EditCell,
-    EditColumn, // TODO
-    RenameColumn, // TODO
-    EditRow, // TODO
+    EditColumn,   // TODO This also has to check if exists : This is "safe" in terms of sanity though
+    RenameColumn, // TODO This also has to be transaction based : This one too
+    EditRow,      // TODO -> This should be transaction based : But this one... is not sane in transaction
     Exit,
     Print,
     None,
@@ -126,22 +126,54 @@ impl Processor {
             CommandType::DeleteColumn => self.remove_column_from_args(&command.arguments)?,
             CommandType::AddColumn => self.add_column_from_args(&command.arguments)?,
             CommandType::EditCell => self.edit_cell_from_args(&command.arguments)?,
-            CommandType::EditRow => self.edit_cell_from_args(&command.arguments)?,
-            CommandType::EditColumn => self.edit_cell_from_args(&command.arguments)?,
+            CommandType::EditRow => self.edit_row_from_args(&command.arguments)?,
+            CommandType::EditColumn => self.edit_column_from_args(&command.arguments)?,
+            CommandType::RenameColumn => self.rename_column_from_args(&command.arguments)?,
             _ => (),
         }
         Ok(())
     }
 
-    fn edit_row_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+    fn rename_column_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
         if args.len() < 2 {
-            return Err(CedError::CliError(format!("Insufficient arguments for row-edit")));
+            return Err(CedError::CliError(format!("Insufficient arguments for rename-column")));
         }
 
-        let row_number = &args[0].parse::<usize>().map_err(|_|CedError::CliError(format!("\"{}\" is not a valid row number", args[0])))?;
-        let value = &args[1];
+        let column = &args[0];
+        let new_name = &args[1];
 
-        // self.edit_cell(row, column, value)?;
+        self.rename_column(&column, &new_name)?;
+
+        Ok(())
+    }
+
+    fn edit_row_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        if args.len() < 2 {
+            return Err(CedError::CliError(format!("Insufficient arguments for edit-row")));
+        }
+
+        let row_number = args[0].parse::<usize>()
+            .map_err(|_|CedError::CliError(format!("\"{}\" is not a valid row number", args[0])))?;
+        let row_data = &args[1];
+
+        if row_number >= self.data.get_row_count() {
+            return Err(CedError::CliError(format!("Row number out of bounds")));
+        } 
+
+        self.edit_row(row_number, row_data)?;
+
+        Ok(())
+    }
+
+    fn edit_column_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        if args.len() < 2 {
+            return Err(CedError::CliError(format!("Insufficient arguments for edit-column")));
+        }
+
+        let column = &args[0];
+        let new_value = &args[1];
+
+        self.edit_column(column, new_value)?;
 
         Ok(())
     }
