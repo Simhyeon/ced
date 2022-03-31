@@ -9,7 +9,7 @@ pub fn main() -> CedResult<()> {
     if let Some(first_arg) = args.get(1) {
         match first_arg.as_str() {
             "--version" | "-v" => {
-                println!("ced, 0.1.0");
+                println!("ced, 0.1.1");
                 return Ok(());
             }
             "--help" | "-h" => {
