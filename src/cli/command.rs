@@ -196,7 +196,10 @@ impl Processor {
             CommandType::Help => utils::write_to_stdout(include_str!("../../src/help.txt"))?,
             CommandType::Import => self.import_file_from_args(&command.arguments)?,
             CommandType::Write => self.overwrite_to_file_from_args(&command.arguments)?,
-            CommandType::Create => self.add_column_array(&command.arguments),
+            CommandType::Create => {
+                self.add_column_array(&command.arguments);
+                utils::write_to_stdout("New columns added\n")?;
+            },
             CommandType::Print => self.print()?,
             CommandType::AddRow => self.add_row_from_args(&command.arguments)?,
             CommandType::DeleteRow => self.remove_row_from_args(&command.arguments)?,
@@ -222,6 +225,7 @@ impl Processor {
         let target_number = args[1].parse::<usize>()
             .map_err(|_|CedError::CliError(format!("\"{}\" is not a valid row number", args[0])))?;
         self.move_row(src_number,target_number)?;
+        utils::write_to_stdout("Row moved\n")?;
         Ok(())
     }
 
@@ -232,6 +236,7 @@ impl Processor {
         let src_number = self.data.get_column_index(&args[0]).ok_or(CedError::InvalidColumn(format!("Column : \"{}\" is not valid", args[0])))?;
         let target_number = self.data.get_column_index(&args[1]).ok_or(CedError::InvalidColumn(format!("Column : \"{}\" is not valid", args[1])))?;
         self.move_column(src_number,target_number)?;
+        utils::write_to_stdout("Column moved\n")?;
         Ok(())
     }
 
@@ -244,7 +249,7 @@ impl Processor {
         let new_name = &args[1];
 
         self.rename_column(&column, &new_name)?;
-
+        utils::write_to_stdout("Column renamed\n")?;
         Ok(())
     }
 
@@ -262,7 +267,7 @@ impl Processor {
         } 
 
         self.edit_row(row_number, row_data)?;
-
+        utils::write_to_stdout("Row content changed\n")?;
         Ok(())
     }
 
@@ -275,7 +280,7 @@ impl Processor {
         let new_value = &args[1];
 
         self.edit_column(column, new_value)?;
-
+        utils::write_to_stdout("Column content changed\n")?;
         Ok(())
     }
 
@@ -294,7 +299,7 @@ impl Processor {
         let column = self.data.get_column_index(coord[1]).ok_or(CedError::InvalidColumn(format!("Column : \"{}\" is not valid", coord[1])))?;
 
         self.edit_cell(row, column, value)?;
-
+        utils::write_to_stdout("Cell content changed\n")?;
         Ok(())
     }
 
@@ -317,6 +322,7 @@ impl Processor {
             }
         }
         self.add_row_from_strings(row_number,&values)?;
+        utils::write_to_stdout("New row added\n")?;
         Ok(())
     }
 
@@ -348,6 +354,7 @@ impl Processor {
         }
 
         self.add_column(column_number, column_name, column_type, None);
+        utils::write_to_stdout("New column added\n")?;
         Ok(())
     }
 
@@ -361,6 +368,7 @@ impl Processor {
         if let None = self.remove_row(row_count) {
             utils::write_to_stderr("No such row to remove\n")?;
         }
+        utils::write_to_stdout("A row removed\n")?;
         Ok(())
     }
 
@@ -372,6 +380,7 @@ impl Processor {
         }.sub(1);
 
         self.remove_column(column_count)?;
+        utils::write_to_stdout("A column removed\n")?;
         Ok(())
     }
 
@@ -386,7 +395,7 @@ impl Processor {
             _ => self.import_from_file(Path::new(&args[0]), args[1].parse().map_err(|_| CedError::CliError(format!("Given value \"{}\" shoul be a valid boolean value. ( has_header )", args[1])))?)?,
         
         }
-
+        utils::write_to_stdout("File imported\n")?;
         Ok(())
     }
 
@@ -399,6 +408,7 @@ impl Processor {
             cache = true;
         }
         self.overwrite_to_file(cache)?;
+        utils::write_to_stdout("File overwritten\n")?;
         Ok(())
     }
 
