@@ -2,6 +2,13 @@
 name = "ced"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+keywords = ["csv", "cli", "text-processing"]
+categories = ["command-line-utilities", "text-processing"]
+description = "Dead easy csv editor"
+homepage = "https://github.com/simhyeon/ced"
+repository = "https://github.com/simhyeon/ced"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

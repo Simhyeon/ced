@@ -12,6 +12,8 @@ pub enum CedError {
     InsufficientRowData,
     #[error("ERR : Invalid row data =\n{0}")]
     InvalidRowData(String),
+    #[error("ERR : Invalid column =\n{0}")]
+    InvalidColumn(String),
     #[error("ERR : Invalid cell data =\n{0}")]
     InvalidCellData(String),
     #[cfg(feature="cli")]

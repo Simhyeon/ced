@@ -39,13 +39,13 @@ impl CommandType {
             "write"             | "w"  => Self::Write,
             "print"             | "p"  => Self::Print,
             "add-row"           | "ar" => Self::AddRow,
+            "exit" | "quit"     | "q"  => Self::Exit,
             "add-column"        | "ac" => Self::AddColumn,
             "delete-row"        | "dr" => Self::DeleteRow,
             "delete-column"     | "dc" => Self::DeleteColumn,
             "edit" |"edit-cell" | "e"  => Self::EditCell,
-            "exit" | "quit"     | "q"  => Self::Exit,
-            "edit-column"       | "ec" => Self::EditColumn,
             "edit-row"          | "er" => Self::EditRow,
+            "edit-column"       | "ec" => Self::EditColumn,
             "rename-column"     | "rc" => Self::RenameColumn,
             "move-row" | "move" | "m"  => Self::MoveRow,
             "move-column"       | "mc" => Self::MoveColumn,
@@ -195,7 +195,7 @@ impl Processor {
             CommandType::Version => utils::write_to_stdout("ced, 0.1.0\n")?,
             CommandType::Help => utils::write_to_stdout(include_str!("../../src/help.txt"))?,
             CommandType::Import => self.import_file_from_args(&command.arguments)?,
-            CommandType::Write => self.overwrite_to_file()?,
+            CommandType::Write => self.overwrite_to_file_from_args(&command.arguments)?,
             CommandType::Create => self.add_column_array(&command.arguments),
             CommandType::Print => self.print()?,
             CommandType::AddRow => self.add_row_from_args(&command.arguments)?,
@@ -229,8 +229,8 @@ impl Processor {
         if args.len() < 2 {
             return Err(CedError::CliError(format!("Insufficient arguments for move-column")));
         }
-        let src_number = self.data.get_column_index(&args[0]).ok_or(CedError::OutOfRangeError)?;
-        let target_number = self.data.get_column_index(&args[1]).ok_or(CedError::OutOfRangeError)?;
+        let src_number = self.data.get_column_index(&args[0]).ok_or(CedError::InvalidColumn(format!("Column : \"{}\" is not valid", args[0])))?;
+        let target_number = self.data.get_column_index(&args[1]).ok_or(CedError::InvalidColumn(format!("Column : \"{}\" is not valid", args[1])))?;
         self.move_column(src_number,target_number)?;
         Ok(())
     }
@@ -291,7 +291,7 @@ impl Processor {
         }
 
         let row = coord[0].parse::<usize>().map_err(|_|CedError::CliError(format!("\"{}\" is not a valid row number", coord[0])))?;
-        let column = coord[1].parse::<usize>().map_err(|_|CedError::CliError(format!("\"{}\" is not a valid column number", coord[1])))?;
+        let column = self.data.get_column_index(coord[1]).ok_or(CedError::InvalidColumn(format!("Column : \"{}\" is not valid", coord[1])))?;
 
         self.edit_cell(row, column, value)?;
 
@@ -304,7 +304,6 @@ impl Processor {
         let values;
         match len {
             0 => {
-                println!("NO args");
                 row_number = self.data.get_row_count();
                 values =  self.add_row_loop()?;
             }
@@ -388,6 +387,18 @@ impl Processor {
         
         }
 
+        Ok(())
+    }
+
+    fn overwrite_to_file_from_args(&mut self, args : &Vec<String>) -> CedResult<()> {
+        let cache: bool;
+        if args.len() >= 1 {
+            cache = args[0].parse::<bool>()
+                .map_err(|_|CedError::CliError(format!("\"{}\" is not a valid boolean value", args[0])))?;
+        } else {
+            cache = true;
+        }
+        self.overwrite_to_file(cache)?;
         Ok(())
     }
 

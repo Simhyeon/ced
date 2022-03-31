@@ -59,12 +59,15 @@ impl Processor {
         Ok(())
     }
 
-    pub fn overwrite_to_file(&self) -> CedResult<()> {
+    pub fn overwrite_to_file(&self, cache: bool) -> CedResult<()> {
         if let None = self.file { return Ok(()); } 
 
         let file = self.file.as_ref().unwrap();
         let csv = self.data.to_string();
-        std::fs::copy(file, std::env::temp_dir().join("cache.csv")).map_err(|err| CedError::io_error(err,"Failed to create cache for overwrite"))?;
+        // Cache file into temp directory
+        if cache {
+            std::fs::copy(file, std::env::temp_dir().join("cache.csv")).map_err(|err| CedError::io_error(err,"Failed to create cache for overwrite"))?;
+        }
         std::fs::write(file,csv.as_bytes()).map_err(|err| CedError::io_error(err, "Failed to overwrite file with content"))?;
         Ok(())
     }
