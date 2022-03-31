@@ -7,6 +7,12 @@ prevents you from adding surplus column or invalid data type.
 
 That's it. No searching, filtering, no nothing.
 
+### Install
+
+```bash
+cargo install ced --features cli
+```
+
 ### Binary usage
 
 ```bash
@@ -26,6 +32,7 @@ Second Header = .. <USER_INPUT>
 ```
 
 ### Yet to come
+- Library usage and ergonomic binding
 - Import with csv schema for easier limiter set
 - Limiter support in built-in command line interface
 - Pretty print with custom csv viewer
