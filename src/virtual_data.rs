@@ -3,6 +3,7 @@ use crate::error::{CedError, CedResult};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
+#[derive(Clone)]
 pub(crate) struct VirtualData {
     pub(crate) columns: Vec<Column>,
     pub(crate) rows: Vec<Row>,
@@ -25,6 +26,8 @@ impl std::fmt::Display for VirtualData {
 
             csv_src.push_str(&row_value);
         }
+        // Remove trailing newline
+        csv_src.pop();
         write!(f,"{}",csv_src)
     }
 }
@@ -36,7 +39,8 @@ impl VirtualData {
             rows: vec![],
         }
     }
-    pub fn set_data_from_raw(&mut self, x: usize, y: usize, value : &str)  -> CedResult<()> {
+
+    pub fn set_data_from_string(&mut self, x: usize, y: usize, value : &str)  -> CedResult<()> {
         let key_column = self.get_column_if_valid(x, y)?;
         match key_column.column_type {
             ValueType::Text => self.set_data(x,y,Value::Text(value.to_string())),
@@ -47,6 +51,88 @@ impl VirtualData {
                 )
             ),
         }
+    }
+
+    pub fn move_row(&mut self, src: usize, target: usize) -> CedResult<()> {
+        let row_count = self.get_row_count();
+        if src >= row_count || target >= row_count {
+            return Err(CedError::OutOfRangeError);
+        }
+
+        let move_direction = src.cmp(&target);
+        match move_direction { // Go left
+            Ordering::Greater => {
+                println!("TT");
+                let mut index = src;
+                let mut next = index - 1;
+                while next >= target {
+                    self.rows.swap(index, next);
+
+                    // Usize specific check code
+                    if next == 0 {
+                        break;
+                    }
+
+                    // Update index values
+                    index -= 1;
+                    next -= 1;
+                }
+            }
+            Ordering::Less => { // Go right
+                let mut index = src;
+                let mut next = index + 1;
+                while next <= target {
+                    self.rows.swap(index, next);
+
+                    // Update index values
+                    index += 1;
+                    next  += 1;
+                }
+            }
+            Ordering::Equal => (),
+        } 
+        Ok(())
+    }
+
+    pub fn move_column(&mut self, src: usize, target: usize) -> CedResult<()> {
+        let column_count = self.get_column_count();
+        if src >= column_count || target >= column_count {
+            return Err(CedError::OutOfRangeError);
+        }
+
+        let move_direction = src.cmp(&target);
+        match move_direction { // Go left
+            Ordering::Greater => {
+                println!("TT");
+                let mut index = src;
+                let mut next = index - 1;
+                while next >= target {
+                    self.columns.swap(index, next);
+
+                    // Usize specific check code
+                    if next == 0 {
+                        break;
+                    }
+
+                    // Update index values
+                    index -= 1;
+                    next -= 1;
+                }
+            }
+            Ordering::Less => { // Go right
+                let mut index = src;
+                let mut next = index + 1;
+                while next <= target {
+                    self.columns.swap(index, next);
+
+                    // Update index values
+                    index += 1;
+                    next  += 1;
+                }
+            }
+            Ordering::Equal => (),
+        } 
+        Ok(())
     }
 
     pub fn rename_column(&mut self, column: &str, new_name: &str) -> CedResult<()> {
@@ -82,15 +168,26 @@ impl VirtualData {
     // 1. Check limiter
     // 2. Check if value exists
     pub fn set_row(&mut self, row_number: usize, values : Vec<Value>)  -> CedResult<()> {
+        // Row's value doesn't match length of columns
         if values.len() != self.get_column_count() {
              return Err(CedError::InsufficientRowData); 
         }
+        // Invalid cooridnate
         if !self.is_valid_cell_coordinate(row_number, 0) { 
              return Err(CedError::OutOfRangeError); 
         }
 
+        let col_value_iter = self.columns.iter().zip(values.iter());
+
+        for (col,value) in col_value_iter.clone() {
+            // Early return if doesn't qualify a single element
+            if !col.limiter.qualify(value) {
+                return Err(CedError::InvalidRowData(format!("{} doesn't qualify {}'s limiter",value.to_string(),col.name)));
+            }
+        }
+
         let row = self.rows.get_mut(row_number).unwrap();
-        for (col,value) in self.columns.iter().zip(values.iter()) {
+        for (col,value) in col_value_iter {
             row.update_value(&col.name, value.clone())
         }
 
@@ -155,7 +252,7 @@ impl VirtualData {
     }
     
     // <DRY>
-    fn get_column_index(&self, src: &str) -> Option<usize> {
+    pub(crate) fn get_column_index(&self, src: &str) -> Option<usize> {
         let column_index = match src.parse::<usize>() {
             Err(_) => self.columns.iter().position(|c| c.name == src),
             Ok(index) => Some(index),
@@ -181,11 +278,20 @@ impl VirtualData {
         Ok(key_column)
     }
 
-    // TODO
-    fn is_valid_column_data(&self, column: usize,value: &Value) -> CedResult<()> {
-        Ok(())
+    /// Check if given value corresponds to column limiter
+    fn is_valid_column_data(&self, column: usize,value: &Value) -> CedResult<bool> {
+        if let Some(col) = self.columns.get(column) {
+            if col.limiter.qualify(value) {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        } else {
+            return Err(CedError::InvalidRowData(format!("Given column number \"{}\" doesn't exist", column)));
+        }
     }
 
+    /// Check if given values' length match column's legnth
     fn check_row_length(&self, values : &Vec<Value>) -> CedResult<()> {
         match self.get_column_count().cmp(&values.len()) {
             Ordering::Equal => (),
@@ -204,9 +310,17 @@ impl VirtualData {
     pub fn get_column_count(&self) -> usize {
         self.columns.len()
     }
+
+    /// Drop all data
+    pub fn drop(&mut self) {
+        self.columns.clear();
+        self.rows.clear();
+    }
+
     // </EXT>
 }
 
+#[derive(Clone)]
 pub struct Column {
     pub(crate) name       : String,
     pub(crate) column_type: ValueType,
@@ -247,23 +361,12 @@ impl Column {
         // Construct new default value
         match self.column_type {
             ValueType::Number => { Value::Number(0) }
-            ValueType::Text => {
-                let mut default_string = String::new();
-                if let Some(pre) = self.limiter.get_prefix() {
-                    default_string.push_str(pre);
-                }
-
-                if let Some(post) = self.limiter.get_postfix() {
-                    default_string.push_str(" ");
-                    default_string.push_str(post);
-                }
-
-                Value::Text(default_string)
-            }
+            ValueType::Text => { Value::Text(String::new()) }
         }
     }
 }
 
+#[derive(Clone)]
 pub struct Row {
     values : HashMap<String,Value>,
 }

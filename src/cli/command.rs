@@ -1,29 +1,29 @@
-use crate::{processor::Processor, error::{CedResult, CedError}, value::{ValueType, Value}};
+use crate::processor::Processor;
+use crate::error::{CedResult, CedError};
+use crate::value::ValueType;
+use crate::virtual_data::VirtualData;
 use super::utils;
 use std::{path::Path, ops::Sub};
 
-// NOTE
-// Cursor operation is not necessary because cli is not cursor based
-//
-// TODO
-// Append selection variant
 #[derive(PartialEq, Debug)]
 pub enum CommandType {
     Version,
     Help,
-    Undo, // TODO
-    Redo, // TODO
+    Undo,
+    Redo,
     Create,
-    Overwrite,
-    Read,
+    Write,
+    Import,
     AddRow,
     AddColumn,
     DeleteRow, 
     DeleteColumn,
     EditCell,
-    EditColumn,   // TODO This also has to check if exists : This is "safe" in terms of sanity though
-    RenameColumn, // TODO This also has to be transaction based : This one too
-    EditRow,      // TODO -> This should be transaction based : But this one... is not sane in transaction
+    EditColumn,
+    RenameColumn,
+    EditRow,
+    MoveRow,
+    MoveColumn,
     Exit,
     Print,
     None,
@@ -32,21 +32,25 @@ pub enum CommandType {
 impl CommandType {
     pub fn from_str(src: &str) -> Self {
         let command_type = match src.to_lowercase().trim() {
-            "version" | "v" => Self::Version,
-            "help" | "h" => Self::Help,
-            "read" | "r" => Self::Read,
-            "create" | "c" => Self::Create,
-            "overwrite" | "ow" => Self::Overwrite,
-            "print" | "p" => Self::Print,
-            "add-row" | "ar"   => Self::AddRow,
-            "delete-row" | "dr"   => Self::DeleteRow,
-            "add-column" | "ac" => Self::AddColumn,
-            "delete-column" | "dc"   => Self::DeleteColumn,
-            "edit" | "e" => Self::EditCell,
-            "exit" | "x" => Self::Exit,
-            "edit-column" | "ec" => Self::EditColumn,
-            "edit-row" | "er" => Self::EditRow,
-            "rename-column" | "rc" => Self::RenameColumn,
+            "version"           | "v"  => Self::Version,
+            "help"              | "h"  => Self::Help,
+            "import"            | "i"  => Self::Import,
+            "create"            | "c"  => Self::Create,
+            "write"             | "w"  => Self::Write,
+            "print"             | "p"  => Self::Print,
+            "add-row"           | "ar" => Self::AddRow,
+            "add-column"        | "ac" => Self::AddColumn,
+            "delete-row"        | "dr" => Self::DeleteRow,
+            "delete-column"     | "dc" => Self::DeleteColumn,
+            "edit" |"edit-cell" | "e"  => Self::EditCell,
+            "exit" | "quit"     | "q"  => Self::Exit,
+            "edit-column"       | "ec" => Self::EditColumn,
+            "edit-row"          | "er" => Self::EditRow,
+            "rename-column"     | "rc" => Self::RenameColumn,
+            "move-row" | "move" | "m"  => Self::MoveRow,
+            "move-column"       | "mc" => Self::MoveColumn,
+            "undo"              | "u"  => Self::Undo,
+            "redo"              | "r"  => Self::Redo,
             _ => Self::None,
         };
         command_type
@@ -80,15 +84,57 @@ impl Command {
     }
 }
 
+const HISTORY_CAPACITY: usize = 16;
+
+pub struct CommandHistory {
+    // TODO
+    // Preserved for command pattern 
+    // history: Vec<Command>,
+    memento_history: Vec<VirtualData>,
+    redo_history: Vec<VirtualData>,
+}
+
+impl CommandHistory {
+    pub fn new() -> Self {
+        Self {
+            memento_history : vec![],
+            redo_history    : vec![],
+        }
+    }
+
+    pub(crate) fn take_snapshot(&mut self, data : &VirtualData) {
+        self.memento_history.push(data.clone());
+        // You cannot redo if you have done something other than undo
+        self.redo_history.clear();
+        if self.memento_history.len() > HISTORY_CAPACITY {
+            self.memento_history.rotate_left(1);
+            self.memento_history.pop();
+        }
+    }
+
+    pub(crate) fn pop(&mut self) -> Option<&VirtualData> {
+        if let Some(data) = self.memento_history.pop() {
+            self.redo_history.push(data);
+            self.redo_history.last()
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn pull_redo(&mut self) -> Option<VirtualData> {
+        self.redo_history.pop()
+    }
+}
+
 pub struct CommandLoop {
-    command_history: Vec<Command>,
+    history: CommandHistory,
     processor: Processor,
 }
 
 impl CommandLoop {
     pub fn new() -> Self {
         Self { 
-            command_history : vec![],
+            history : CommandHistory::new(),
             processor : Processor::new(),
         }
     }
@@ -98,15 +144,46 @@ impl CommandLoop {
         utils::write_to_stdout("Ced, a csv editor\n")?;
         while CommandType::Exit != command.command_type {
             utils::write_to_stdout(">> ")?;
-            command = Command::from_str(&utils::read_stdin()?)?;
+            command = Command::from_str(&utils::read_stdin(true)?)?;
 
             // DEBUG NOTE TODO
             #[cfg(debug_assertions)]
             println!("{:?}", command);
 
+            match command.command_type {
+                CommandType::Undo | CommandType::Redo => {
+                    if command.command_type == CommandType::Undo {
+                        self.undo()?;
+                    } else {
+                        self.redo()?;
+                    }
+                    continue;
+                }
+                // Un-redoable commands
+                CommandType::Help | CommandType::Exit | 
+                    CommandType::Import | CommandType::Print | 
+                    CommandType::Create | CommandType::Write | 
+                    CommandType::None | CommandType::Version => (),
+                    _ => self.history.take_snapshot(&self.processor.data),
+            }
+
             if let Err(err) = self.processor.execute_command(&command) {
                 utils::write_to_stderr(&(err.to_string() + "\n"))?;
             }
+        }
+        Ok(())
+    }
+
+    fn undo(&mut self) -> CedResult<()> {
+        if let Some(prev) =  self.history.pop() {
+            self.processor.data = prev.clone();
+        }
+        Ok(())
+    }
+
+    fn redo(&mut self) -> CedResult<()> {
+        if let Some(prev) =  self.history.pull_redo() {
+            self.processor.data = prev;
         }
         Ok(())
     }
@@ -117,9 +194,9 @@ impl Processor {
         match command.command_type {
             CommandType::Version => utils::write_to_stdout("ced, 0.1.0\n")?,
             CommandType::Help => utils::write_to_stdout(include_str!("../../src/help.txt"))?,
-            CommandType::Read => self.read_file_from_args(&command.arguments)?,
-            CommandType::Overwrite => self.overwrite()?,
-            CommandType::Create => self.create_columns_fast(&command.arguments),
+            CommandType::Import => self.import_file_from_args(&command.arguments)?,
+            CommandType::Write => self.overwrite_to_file()?,
+            CommandType::Create => self.add_column_array(&command.arguments),
             CommandType::Print => self.print()?,
             CommandType::AddRow => self.add_row_from_args(&command.arguments)?,
             CommandType::DeleteRow => self.remove_row_from_args(&command.arguments)?,
@@ -129,8 +206,32 @@ impl Processor {
             CommandType::EditRow => self.edit_row_from_args(&command.arguments)?,
             CommandType::EditColumn => self.edit_column_from_args(&command.arguments)?,
             CommandType::RenameColumn => self.rename_column_from_args(&command.arguments)?,
+            CommandType::MoveRow => self.move_row_from_args(&command.arguments)?,
+            CommandType::MoveColumn => self.move_column_from_args(&command.arguments)?,
             _ => (),
         }
+        Ok(())
+    }
+
+    fn move_row_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        if args.len() < 2 {
+            return Err(CedError::CliError(format!("Insufficient arguments for move-row")));
+        }
+        let src_number = args[0].parse::<usize>()
+            .map_err(|_|CedError::CliError(format!("\"{}\" is not a valid row number", args[0])))?;
+        let target_number = args[1].parse::<usize>()
+            .map_err(|_|CedError::CliError(format!("\"{}\" is not a valid row number", args[0])))?;
+        self.move_row(src_number,target_number)?;
+        Ok(())
+    }
+
+    fn move_column_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        if args.len() < 2 {
+            return Err(CedError::CliError(format!("Insufficient arguments for move-column")));
+        }
+        let src_number = self.data.get_column_index(&args[0]).ok_or(CedError::OutOfRangeError)?;
+        let target_number = self.data.get_column_index(&args[1]).ok_or(CedError::OutOfRangeError)?;
+        self.move_column(src_number,target_number)?;
         Ok(())
     }
 
@@ -198,11 +299,35 @@ impl Processor {
     }
 
     fn add_row_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
-        if args.len() == 0 {
-            return Err(CedError::CliError(format!("Cannot add empty value to row")));
+        let len = args.len();
+        let row_number : usize;
+        let values;
+        match len {
+            0 => {
+                println!("NO args");
+                row_number = self.data.get_row_count();
+                values =  self.add_row_loop()?;
+            }
+            1 => {
+                row_number = args[0].parse::<usize>().map_err(|_|CedError::CliError(format!("\"{}\" is not a valid row number", args[1])))?; 
+                values =  self.add_row_loop()?;
+            }
+            _ => { // From 2..
+                row_number = args[0].parse::<usize>().map_err(|_|CedError::CliError(format!("\"{}\" is not a valid row number", args[1])))?; 
+                values = args[1].split(",").map(|s|s.to_string()).collect::<Vec<String>>()
+            }
         }
-        self.add_row_from_vector(&args[0].split(",").collect::<Vec<&str>>())?;
+        self.add_row_from_strings(row_number,&values)?;
         Ok(())
+    }
+
+    fn add_row_loop(&self) -> CedResult<Vec<String>> {
+        let mut values = vec![];
+        for col in &self.data.columns {
+            utils::write_to_stdout(&format!("{} = ", col.name))?;
+            values.push(utils::read_stdin(true)?);
+        }
+        Ok(values)
     }
 
     fn add_column_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
@@ -251,11 +376,15 @@ impl Processor {
         Ok(())
     }
 
-    fn read_file_from_args(&mut self, args : &Vec<String>) -> CedResult<()> {
+    /// Read from args
+    ///
+    /// file is asssumed to have header
+    /// You can give has_header value as second parameter
+    fn import_file_from_args(&mut self, args : &Vec<String>) -> CedResult<()> {
         match args.len() {
-            0 => return Err(CedError::CliError(format!("You have to specify a file name to read from"))),
-            1 => self.read_from_file(Path::new(&args[0]), true)?,
-            _ => self.read_from_file(Path::new(&args[0]), args[1].parse().map_err(|_| CedError::CliError(format!("Given value \"{}\" shoul be a valid boolean value. ( has_header )", args[1])))?)?,
+            0 => return Err(CedError::CliError(format!("You have to specify a file name to import from"))),
+            1 => self.import_from_file(Path::new(&args[0]), true)?,
+            _ => self.import_from_file(Path::new(&args[0]), args[1].parse().map_err(|_| CedError::CliError(format!("Given value \"{}\" shoul be a valid boolean value. ( has_header )", args[1])))?)?,
         
         }
 
@@ -273,6 +402,11 @@ impl Processor {
     }
 
     fn print_with_numbers(&self, csv: &str) -> CedResult<()> {
+        // Empty csv value, return early
+        if csv.len() == 0 {
+            println!(": CSV is empty :");
+            return Ok(());
+        }
         // TODO
         // Print columns numbers
         // Print row numbers

@@ -1,6 +1,6 @@
 use regex::Regex;
 
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub enum Value {
     Number(isize),
     Text(String),
@@ -18,17 +18,37 @@ impl std::fmt::Display for Value {
 
 // This struct should not expose value directly
 // because some limiters are mutually exclusive.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ValueLimiter {
     // Allowed variant
-    default:  Option<Value>,
-    variant:  Option<Vec<Value>>,
-    prefix :  Option<String>,
-    postfix:  Option<String>,
-    pattern:  Option<Regex>, // -> This better be a regex
+    value_type : ValueType,
+    default    : Option<Value>,
+    variant    : Option<Vec<Value>>,
+    pattern    : Option<Regex>, // -> This better be a regex
 }
 
 impl ValueLimiter {
+    pub fn qualify(&self, value: &Value) -> bool {
+        match value {
+            Value::Number(_) => {
+                if self.value_type == ValueType::Number {
+                    true
+                } else {
+                    false
+                }
+            }
+            Value::Text(text) => {
+                if let Some(variant) = self.variant.as_ref() {
+                    variant.contains(value)
+                } else if let Some(pattern) = self.pattern.as_ref() {
+                    pattern.is_match(text)
+                } else {
+                    true
+                }
+            }
+        }
+    }
+
     pub fn get_default(&self) -> Option<&Value> {
         self.default.as_ref()
     }
@@ -37,20 +57,12 @@ impl ValueLimiter {
         self.variant.as_ref()
     }
 
-    pub fn get_prefix(&self) -> Option<&String> {
-        self.prefix.as_ref()
-    }
-
-    pub fn get_postfix(&self) -> Option<&String> {
-        self.postfix.as_ref()
-    }
-
     pub fn get_pattern(&self) -> Option<&Regex> {
         self.pattern.as_ref()
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum ValueType {
     Number,
     Text,
@@ -61,5 +73,11 @@ impl ValueType {
         if src.to_lowercase().as_str() == "number" {
             Self::Number
         } else { Self::Text }
+    }
+}
+
+impl Default for ValueType {
+    fn default() -> Self {
+        Self::Text
     }
 }

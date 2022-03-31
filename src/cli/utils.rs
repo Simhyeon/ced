@@ -27,11 +27,14 @@ pub(crate) fn write_to_stderr(src: &str) -> CedResult<()> {
     Ok(())
 }
 
-pub(crate) fn read_stdin() -> CedResult<String> {
+pub(crate) fn read_stdin(strip_newline: bool) -> CedResult<String> {
     let mut input = String::new();
     std::io::stdin().read_line(&mut input)
         .map_err(|err| {
             CedError::io_error(err, "Failed to read stdin from source")
         })?;
+    if strip_newline {
+        input.pop();
+    }
     Ok(input)
 }
