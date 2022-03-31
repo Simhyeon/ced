@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-pub type CedResult<T> = Result<T,CedError>;
+pub type CedResult<T> = Result<T, CedError>;
 
 #[derive(Error, Debug)]
 pub enum CedError {
@@ -16,13 +16,13 @@ pub enum CedError {
     InvalidColumn(String),
     #[error("ERR : Invalid cell data =\n{0}")]
     InvalidCellData(String),
-    #[cfg(feature="cli")]
+    #[cfg(feature = "cli")]
     #[error("ERR : Command line error =\n{0}")]
     CliError(String),
 }
 
 impl CedError {
-    pub fn io_error(err: std::io::Error, meta : &str) -> Self {
+    pub fn io_error(err: std::io::Error, meta: &str) -> Self {
         Self::IoError(IoErrorWithMeta::new(err, meta))
     }
 }
@@ -43,12 +43,12 @@ impl IoErrorWithMeta {
 
 impl std::fmt::Debug for IoErrorWithMeta {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,"{} :: {}",self.error,self.meta)
+        write!(f, "{} :: {}", self.error, self.meta)
     }
 }
 
 impl std::fmt::Display for IoErrorWithMeta {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,"{} :: {}",self.error,self.meta)
+        write!(f, "{} :: {}", self.error, self.meta)
     }
 }

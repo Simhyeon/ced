@@ -1,6 +1,6 @@
 use regex::Regex;
 
-#[derive(Clone,PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Value {
     Number(isize),
     Text(String),
@@ -12,7 +12,7 @@ impl std::fmt::Display for Value {
             Self::Number(num) => num.to_string(),
             Self::Text(txt) => txt.to_string(),
         };
-        write!(f,"{}",out)
+        write!(f, "{}", out)
     }
 }
 
@@ -21,10 +21,10 @@ impl std::fmt::Display for Value {
 #[derive(Default, Clone)]
 pub struct ValueLimiter {
     // Allowed variant
-    value_type : ValueType,
-    default    : Option<Value>,
-    variant    : Option<Vec<Value>>,
-    pattern    : Option<Regex>, // -> This better be a regex
+    value_type: ValueType,
+    default: Option<Value>,
+    variant: Option<Vec<Value>>,
+    pattern: Option<Regex>, // -> This better be a regex
 }
 
 impl ValueLimiter {
@@ -69,10 +69,12 @@ pub enum ValueType {
 }
 
 impl ValueType {
-    pub fn from_str(src : &str) -> Self {
+    pub fn from_str(src: &str) -> Self {
         if src.to_lowercase().as_str() == "number" {
             Self::Number
-        } else { Self::Text }
+        } else {
+            Self::Text
+        }
     }
 }
 
