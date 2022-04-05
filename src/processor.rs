@@ -203,12 +203,11 @@ impl Processor {
         Ok(())
     }
 
-    // TODO
-    // What should hapeen when value doesn' tfit schema? That is the problem
-    // 1. -> No import if value exits?
-    // 2. -> Notify user that schema cannot comply
-    // 3. -> Set data as default value if doesn't comply
-    pub fn set_schema(&self, path: impl AsRef<Path>, force: bool) -> CedResult<()> {
+    pub fn export_schema(&self) -> String {
+        self.data.export_schema()
+    }
+
+    pub fn set_schema(&mut self, path: impl AsRef<Path>, panic: bool) -> CedResult<()> {
         let content = std::fs::read_to_string(&path).map_err(|err| {
             CedError::io_error(
                 err,
@@ -226,13 +225,20 @@ impl Processor {
 
         let mut row = content.next();
         while let Some(row_src) = row {
-            let mut limiter = ValueLimiter::from_line(&vec![]);
+            let row_args = row_src.split_whitespace().collect::<Vec<&str>>();
+            let limiter = ValueLimiter::from_line(&row_args[1..].to_vec())?;
+            self.set_limiter(row_args[0], limiter, panic)?;
             row = content.next();
         }
         Ok(())
     }
 
-    pub fn set_limiter(&mut self, column: &str, limiter: ValueLimiter) -> CedResult<()> {
+    pub fn set_limiter(
+        &mut self,
+        column: &str,
+        limiter: ValueLimiter,
+        panic: bool,
+    ) -> CedResult<()> {
         let column = self
             .data
             .try_get_column_index(column)
@@ -240,7 +246,7 @@ impl Processor {
                 "{} is not a valid column",
                 column
             )))?;
-        self.data.set_limiter(column, limiter)?;
+        self.data.set_limiter(column, limiter, panic)?;
         Ok(())
     }
 

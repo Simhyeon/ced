@@ -1,6 +1,7 @@
+use crate::{CedError, CedResult};
 use regex::Regex;
 
-use crate::{CedError, CedResult};
+const SCHEMA_ATTRIBUTE_LEN: usize = 4;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Value {
@@ -77,9 +78,41 @@ impl ValueLimiter {
         }
     }
 
-    pub fn from_line(flags: &Vec<String>) -> Self {
-        // TODO
-        Self::default()
+    pub fn from_line(attributes: &Vec<impl AsRef<str>>) -> CedResult<Self> {
+        let attributes: Vec<&str> = attributes.iter().map(|s| s.as_ref()).collect();
+        if attributes.len() != SCHEMA_ATTRIBUTE_LEN {
+            return Err(CedError::InvalidRowData(format!(
+                "Schema row has insufficient columns \n= {:?}",
+                attributes
+            )));
+        }
+        let mut limiter = Self::default();
+        let vt = ValueType::from_str(&attributes[0]);
+        let default = attributes[1];
+        let variants = attributes[2];
+        let pattern = attributes[3];
+        limiter.set_type(vt);
+
+        // Default value is necessary for complicated limiter
+        if !default.is_empty() {
+            let default = Value::from_str(&default, vt)?;
+
+            // DO variants
+            if !variants.is_empty() {
+                let mut values = vec![];
+                for var in variants.split_whitespace() {
+                    values.push(Value::from_str(var, vt)?);
+                }
+                limiter.set_variant(default, &values)?;
+            } else if !pattern.is_empty() {
+                // Do patterns
+                limiter.set_pattern(
+                    default,
+                    Regex::new(&pattern).expect("Failed to create pattern"),
+                )?;
+            }
+        };
+        Ok(limiter)
     }
 
     pub fn get_type(&self) -> ValueType {
@@ -129,6 +162,19 @@ impl ValueLimiter {
 pub enum ValueType {
     Number,
     Text,
+}
+
+impl std::fmt::Display for ValueType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Number => "Number",
+                Self::Text => "Text",
+            }
+        )
+    }
 }
 
 impl ValueType {

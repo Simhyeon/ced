@@ -3,6 +3,8 @@ use crate::value::{Value, ValueLimiter, ValueType};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
+pub(crate) const SCHEMA_HEADER: &str = "column,type,default,variant,pattern";
+
 #[derive(Clone)]
 pub(crate) struct VirtualData {
     pub(crate) columns: Vec<Column>,
@@ -297,9 +299,73 @@ impl VirtualData {
         Ok(())
     }
 
-    pub fn set_limiter(&mut self, column: usize, limiter: ValueLimiter) -> CedResult<()> {
-        self.columns[column].set_limiter(limiter);
+    pub fn set_limiter(
+        &mut self,
+        column: usize,
+        limiter: ValueLimiter,
+        panic: bool,
+    ) -> CedResult<()> {
+        let column = &mut self.columns[column];
+        for (index, row) in self.rows.iter_mut().enumerate() {
+            let mut qualified = true;
+            if let Some(value) = row.get_value(&column.name) {
+                if !limiter.qualify(value) {
+                    qualified = false;
+                    if panic {
+                        return Err(CedError::InvalidCellData(format!(
+                            "Cell {},{} doesn't match limiter's qualification",
+                            index, column.name
+                        )));
+                    }
+                }
+            } else {
+                return Err(CedError::InvalidRowData(format!(
+                    "Failed to get row data while setting limiter",
+                )));
+            }
+
+            // Force update to defualt value
+            if !qualified && !panic {
+                // It is safe to unwrap because default is set already
+                row.update_value(&column.name, limiter.get_default().unwrap().clone());
+            }
+        }
+        column.set_limiter(limiter);
         Ok(())
+    }
+
+    pub(crate) fn export_schema(&self) -> String {
+        let mut schema = format!("{}\n", SCHEMA_HEADER);
+        for col in &self.columns {
+            let mut line = col.name.clone() + ",";
+            let limiter = &col.limiter;
+            line.push_str(&limiter.get_type().to_string());
+            line.push_str(",");
+            line.push_str(
+                &limiter
+                    .get_default()
+                    .map(|s| s.to_string())
+                    .unwrap_or(String::new()),
+            );
+            line.push_str(",");
+            line.push_str(
+                &limiter
+                    .get_variant()
+                    .map(|s| s.iter().map(|s| s.to_string()).collect::<Vec<String>>())
+                    .unwrap_or(vec![])
+                    .join(" "),
+            );
+            line.push_str(",");
+            line.push_str(
+                &limiter
+                    .get_pattern()
+                    .map(|s| s.to_string())
+                    .unwrap_or(String::new()),
+            );
+
+            schema.push_str(&(line + "\n"));
+        }
+        schema
     }
 
     // <DRY>

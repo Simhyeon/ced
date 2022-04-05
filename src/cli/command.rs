@@ -2,9 +2,8 @@ use super::utils;
 use crate::error::{CedError, CedResult};
 use crate::processor::Processor;
 use crate::value::ValueType;
-use crate::virtual_data::VirtualData;
-use crate::{Value, ValueLimiter};
-use regex::Regex;
+use crate::virtual_data::{VirtualData, SCHEMA_HEADER};
+use crate::ValueLimiter;
 use std::io::Write;
 use std::process::Stdio;
 use std::{ops::Sub, path::Path};
@@ -33,6 +32,9 @@ pub enum CommandType {
     Print,
     PrintColumn,
     Limit,
+    Schema,
+    SchemaInit,
+    SchemaExport,
     None,
 }
 
@@ -61,6 +63,9 @@ impl CommandType {
             "limit" | "l" => Self::Limit,
             "undo" | "u" => Self::Undo,
             "redo" | "r" => Self::Redo,
+            "schema" | "s" => Self::Schema,
+            "schema-init" | "si" => Self::SchemaInit,
+            "schema-export" | "se" => Self::SchemaExport,
             _ => Self::None,
         };
         command_type
@@ -193,6 +198,9 @@ impl CommandLoop {
             | CommandType::Create
             | CommandType::Write
             | CommandType::None
+            | CommandType::Schema
+            | CommandType::SchemaInit
+            | CommandType::SchemaExport
             | CommandType::Version
             | CommandType::Print => (),
             CommandType::PrintColumn => (),
@@ -228,6 +236,9 @@ impl Processor {
             CommandType::None => utils::write_to_stdout("No such command \n")?,
             CommandType::Help => utils::write_to_stdout(include_str!("../../src/help.txt"))?,
             CommandType::Import => self.import_file_from_args(&command.arguments)?,
+            CommandType::Schema => self.import_schema_from_args(&command.arguments)?,
+            CommandType::SchemaInit => self.init_schema_from_args(&command.arguments)?,
+            CommandType::SchemaExport => self.export_schema_from_args(&command.arguments)?,
             CommandType::Export => self.write_to_file_from_args(&command.arguments)?,
             CommandType::Write => self.overwrite_to_file_from_args(&command.arguments)?,
             CommandType::Create => {
@@ -498,6 +509,56 @@ impl Processor {
         Ok(())
     }
 
+    fn import_schema_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        if args.len() < 2 {
+            return Err(CedError::CliError(format!(
+                "Insufficient variable for schema"
+            )));
+        }
+        let force = &args[1];
+        self.set_schema(
+            &args[0],
+            !force
+                .parse::<bool>()
+                .map_err(|_| CedError::CliError(format!("{force} is not a valid value")))?,
+        )?;
+        utils::write_to_stdout("Schema applied\n")?;
+        Ok(())
+    }
+
+    fn export_schema_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        if args.len() < 1 {
+            return Err(CedError::CliError(format!(
+                "Schema export needs a file path"
+            )));
+        }
+        let file = &args[0];
+        let mut file = std::fs::File::create(file)
+            .map_err(|err| CedError::io_error(err, "Failed to open file for schema write"))?;
+
+        file.write_all(self.export_schema().as_bytes())
+            .map_err(|err| CedError::io_error(err, "Failed to write schema to a file"))?;
+
+        utils::write_to_stdout("Schema exported\n")?;
+        Ok(())
+    }
+
+    fn init_schema_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        let file_name = if args.len() < 1 {
+            "ced_schema.csv"
+        } else {
+            &args[0]
+        };
+        let mut file = std::fs::File::create(file_name)
+            .map_err(|err| CedError::io_error(err, "Failed to open file for schema init"))?;
+
+        file.write_all(SCHEMA_HEADER.as_bytes())
+            .map_err(|err| CedError::io_error(err, "Failed to write schema to a file"))?;
+
+        utils::write_to_stdout("Schema initiated\n")?;
+        Ok(())
+    }
+
     fn write_to_file_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
         if args.len() < 1 {
             return Err(CedError::CliError(format!("Export requires file path")));
@@ -624,42 +685,32 @@ impl Processor {
         utils::write_to_stdout("Column = ")?;
         let column = utils::read_stdin(true)?;
 
+        let mut limiter_attributes = vec![];
         utils::write_to_stdout("Type (Text|Number) = ")?;
-        let column_type = utils::read_stdin(true)?;
+        limiter_attributes.push(utils::read_stdin(true)?);
 
         utils::write_to_stdout("Default = ")?;
-        let default = utils::read_stdin(true)?;
+        limiter_attributes.push(utils::read_stdin(true)?);
 
         utils::write_to_stdout("Variants = ")?;
-        let variants = utils::read_stdin(true)?;
+        limiter_attributes.push(utils::read_stdin(true)?);
 
         utils::write_to_stdout("Pattern = ")?;
-        let pattern = utils::read_stdin(true)?;
+        limiter_attributes.push(utils::read_stdin(true)?);
 
-        let mut limiter = ValueLimiter::default();
-        let vt = ValueType::from_str(&column_type);
-        limiter.set_type(vt);
+        utils::write_to_stdout("Force update(default=true) = ")?;
+        let force = utils::read_stdin(true)?;
 
-        // Default value is necessary for complicated limiter
-        if !default.is_empty() {
-            let default = Value::from_str(&default, vt)?;
-
-            // DO variants
-            if pattern.is_empty() {
-                let mut values = vec![];
-                for var in variants.split_whitespace() {
-                    values.push(Value::from_str(var, vt)?);
-                }
-                limiter.set_variant(default, &values)?;
-            } else {
-                // Do patterns
-                limiter.set_pattern(
-                    default,
-                    Regex::new(&pattern).expect("Failed to create pattern"),
-                )?;
-            }
+        let force = if force.is_empty() {
+            true
+        } else {
+            force.parse::<bool>().map_err(|_| {
+                CedError::CliError("You need to feed boolean value for update".to_string())
+            })?
         };
-        self.set_limiter(&column, limiter)?;
+
+        let limiter = ValueLimiter::from_line(&limiter_attributes)?;
+        self.set_limiter(&column, limiter, !force)?;
         Ok(())
     }
 }
