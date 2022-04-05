@@ -81,7 +81,6 @@ impl VirtualData {
         match move_direction {
             // Go left
             Ordering::Greater => {
-                println!("TT");
                 let mut index = src;
                 let mut next = index - 1;
                 while next >= target {
@@ -124,7 +123,6 @@ impl VirtualData {
         match move_direction {
             // Go left
             Ordering::Greater => {
-                println!("TT");
                 let mut index = src;
                 let mut next = index - 1;
                 while next >= target {
@@ -158,7 +156,7 @@ impl VirtualData {
     }
 
     pub fn rename_column(&mut self, column: &str, new_name: &str) -> CedResult<()> {
-        let column_index = self.get_column_index(column);
+        let column_index = self.try_get_column_index(column);
 
         if let None = column_index {
             return Err(CedError::OutOfRangeError);
@@ -175,7 +173,7 @@ impl VirtualData {
     // 1. Check limiter
     // 2. Check if value exists
     pub fn set_column(&mut self, column: &str, value: Value) -> CedResult<()> {
-        let column_index = self.get_column_index(column);
+        let column_index = self.try_get_column_index(column);
         if let None = column_index {
             return Err(CedError::OutOfRangeError);
         }
@@ -262,13 +260,18 @@ impl VirtualData {
         column_name: &str,
         column_type: ValueType,
         limiter: Option<ValueLimiter>,
-    ) {
+    ) -> CedResult<()> {
+        if let Some(_) = self.try_get_column_index(column_name) { return Err(CedError::InvalidColumn(format!("Cannot add existing column or number named column"))); }
+        if let Ok(_) = column_name.parse::<isize>() {
+            return Err(CedError::InvalidColumn(format!("Cannot add number named column"))); 
+        }
         let new_column = Column::new(column_name, column_type, limiter);
         let default_value = new_column.get_default_value();
         for row in &mut self.rows {
             row.insert_value(&new_column.name, default_value.clone());
         }
         self.columns.insert(column, new_column);
+        Ok(())
     }
 
     pub fn delete_column(&mut self, column: usize) -> CedResult<()> {
@@ -288,8 +291,13 @@ impl VirtualData {
         Ok(())
     }
 
+    pub fn set_limiter(&mut self, column: usize, limiter: ValueLimiter) -> CedResult<()> {
+        self.columns[column].set_limiter(limiter);
+        Ok(())
+    }
+
     // <DRY>
-    pub(crate) fn get_column_index(&self, src: &str) -> Option<usize> {
+    pub(crate) fn try_get_column_index(&self, src: &str) -> Option<usize> {
         let column_index = match src.parse::<usize>() {
             Err(_) => self.columns.iter().position(|c| c.name == src),
             Ok(index) => Some(index),
@@ -316,12 +324,14 @@ impl VirtualData {
     }
 
     /// Check if given value corresponds to column limiter
-    fn is_valid_column_data(&self, column: usize, value: &Value) -> CedResult<bool> {
+    fn is_valid_column_data(&self, column: usize, value: &Value) -> CedResult<()> {
         if let Some(col) = self.columns.get(column) {
             if col.limiter.qualify(value) {
-                Ok(true)
+                Ok(())
             } else {
-                Ok(false)
+                return Err(CedError::InvalidCellData(format!(
+                            "Given cell data failed to match limiter's restriction",
+                )));
             }
         } else {
             return Err(CedError::InvalidRowData(format!(
@@ -366,7 +376,7 @@ impl VirtualData {
     // </EXT>
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Column {
     pub(crate) name: String,
     pub(crate) column_type: ValueType,
@@ -395,6 +405,7 @@ impl Column {
     }
 
     pub(crate) fn set_limiter(&mut self, limiter: ValueLimiter) {
+        self.column_type = limiter.get_type(); 
         self.limiter = limiter;
     }
 

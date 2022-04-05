@@ -56,7 +56,7 @@ impl Processor {
                     "Given file does not have a header"
                 )));
             }
-            self.add_column_array(&header.unwrap().split(',').collect::<Vec<_>>());
+            self.add_column_array(&header.unwrap().split(',').collect::<Vec<_>>())?;
         }
 
         let mut row = content.next();
@@ -65,7 +65,7 @@ impl Processor {
 
             // No column data
             if self.data.columns.len() == 0 {
-                self.add_column_array(&self.make_arbitrary_column(split.len()));
+                self.add_column_array(&self.make_arbitrary_column(split.len()))?;
                 continue;
             }
 
@@ -161,9 +161,10 @@ impl Processor {
         column_name: &str,
         column_type: ValueType,
         limiter: Option<ValueLimiter>,
-    ) {
+    ) -> CedResult<()> {
         self.data
-            .insert_column(column_number, column_name, column_type, limiter);
+            .insert_column(column_number, column_name, column_type, limiter)?;
+        Ok(())
     }
 
     pub fn remove_row(&mut self, row_number: usize) -> Option<Row> {
@@ -175,15 +176,16 @@ impl Processor {
         Ok(())
     }
 
-    pub fn add_column_array(&mut self, columns: &Vec<impl AsRef<str>>) {
+    pub fn add_column_array(&mut self, columns: &Vec<impl AsRef<str>>) -> CedResult<()> {
         for col in columns {
             self.add_column(
                 self.data.get_column_count(),
                 &col.as_ref(),
                 ValueType::Text,
                 None,
-            );
+            )?;
         }
+        Ok(())
     }
 
     pub fn move_row(&mut self, src: usize, target: usize) -> CedResult<()> {
@@ -201,6 +203,42 @@ impl Processor {
         Ok(())
     }
 
+    // TODO
+    // What should hapeen when value doesn' tfit schema? That is the problem
+    // 1. -> No import if value exits?
+    // 2. -> Notify user that schema cannot comply
+    // 3. -> Set data as default value if doesn't comply
+    pub fn set_schema(&self, path: impl AsRef<Path>, force: bool) -> CedResult<()> {
+        let content = std::fs::read_to_string(&path).map_err(|err| {
+            CedError::io_error(
+                err,
+                &format!("Failed to import file \"{}\"", path.as_ref().display()),
+            )
+        })?;
+        let mut content = content.lines();
+
+        let header = content.next();
+        if let None = header {
+            return Err(CedError::InvalidRowData(format!(
+                        "Given file does not have a header"
+            )));
+        }
+
+        let mut row = content.next();
+        while let Some(row_src) = row {
+            let mut limiter = ValueLimiter::from_line(&vec![]);
+            row = content.next();
+        }
+        Ok(())
+    }
+
+    pub fn set_limiter(&mut self, column: &str, limiter: ValueLimiter) -> CedResult<()> {
+        let column = self.data.try_get_column_index(column).ok_or(CedError::InvalidColumn(format!("{} is not a valid column", column)))?;
+        self.data.set_limiter(column, limiter)?;
+        Ok(())
+    }
+
+    // <MISC>
     /// Get last row index
     pub fn last_row_index(&self) -> usize {
         self.data.get_row_count().max(1) - 1
@@ -230,6 +268,7 @@ impl Processor {
     pub fn get_column(&self, index: usize) -> Option<&Column> {
         self.data.columns.get(index)
     }
+    // </MISC>
 
     // <DRY>
     fn make_arbitrary_column(&self, size: usize) -> Vec<String> {
