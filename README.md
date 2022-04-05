@@ -16,14 +16,21 @@ cargo install ced --features cli
 ### Binary usage
 
 ```bash
+# Type help in prompt or give --help flag for detailed usage.
+
 # Start ced
+# Optionaly with initial import
 ced
+ced file.csv
 
 # Get help
 >> help
 
 # Import file
 >> import file_name.csv
+
+# Import schema file
+>> schema ced_schema.csv
 
 # Print csv data optionally with viewer command
 # Custom viwer may not work windows platform
@@ -35,14 +42,15 @@ ced
 First Header = .. <USER_INPUT>
 Second Header = .. <USER_INPUT>
 
+# Set limiter for a column
+>> limit
+
 # Export to file
 >> export file_name.csv
 
-# Overwrite to imported file
+# Overwrite to the imported file
 >> write <USE_CACHE: boolean>
 ```
 
 ### Yet to come
 - Library usage and ergonomic binding
-- Import with csv schema for easier limiter set
-- Limiter support in built-in command line interface
