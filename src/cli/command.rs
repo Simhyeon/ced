@@ -29,6 +29,7 @@ pub enum CommandType {
     MoveColumn,
     Exit,
     Print,
+    Limit,
     None,
 }
 
@@ -53,6 +54,7 @@ impl CommandType {
             "rename-column" | "rc" => Self::RenameColumn,
             "move-row" | "move" | "m" => Self::MoveRow,
             "move-column" | "mc" => Self::MoveColumn,
+            "limit"| "l" => Self::Limit,
             "undo" | "u" => Self::Undo,
             "redo" | "r" => Self::Redo,
             _ => Self::None,
@@ -144,6 +146,11 @@ impl CommandLoop {
         }
     }
 
+    pub fn feed_command(&mut self, command: &Command) -> CedResult<()> {
+        self.execute_command(command)?;
+        Ok(())
+    }
+
     /// Start a loop until exit
     pub fn start_loop(&mut self) -> CedResult<()> {
         let mut command = Command::default();
@@ -155,22 +162,27 @@ impl CommandLoop {
                 continue;
             }
             command = Command::from_str(input)?;
+            self.execute_command(&command)?;
+        }
+        Ok(())
+    }
 
-            // DEBUG NOTE TODO
-            #[cfg(debug_assertions)]
-            println!("{:?}", command);
+    fn execute_command(&mut self, command: &Command) -> CedResult<()> {
+        // DEBUG NOTE TODO
+        #[cfg(debug_assertions)]
+        println!("{:?}", command);
 
-            match command.command_type {
-                CommandType::Undo | CommandType::Redo => {
-                    if command.command_type == CommandType::Undo {
-                        self.undo()?;
-                    } else {
-                        self.redo()?;
-                    }
-                    continue;
+        match command.command_type {
+            CommandType::Undo | CommandType::Redo => {
+                if command.command_type == CommandType::Undo {
+                    self.undo()?;
+                } else {
+                    self.redo()?;
                 }
-                // Un-redoable commands
-                CommandType::Help
+                return Ok(());
+            }
+            // Un-redoable commands
+            CommandType::Help
                 | CommandType::Exit
                 | CommandType::Import
                 | CommandType::Export
@@ -179,12 +191,11 @@ impl CommandLoop {
                 | CommandType::None
                 | CommandType::Version
                 | CommandType::Print => (),
-                _ => self.history.take_snapshot(&self.processor.data),
-            }
+            _ => self.history.take_snapshot(&self.processor.data),
+        }
 
-            if let Err(err) = self.processor.execute_command(&command) {
-                utils::write_to_stderr(&(err.to_string() + "\n"))?;
-            }
+        if let Err(err) = self.processor.execute_command(&command) {
+            utils::write_to_stderr(&(err.to_string() + "\n"))?;
         }
         Ok(())
     }
@@ -228,6 +239,7 @@ impl Processor {
             CommandType::RenameColumn => self.rename_column_from_args(&command.arguments)?,
             CommandType::MoveRow => self.move_row_from_args(&command.arguments)?,
             CommandType::MoveColumn => self.move_column_from_args(&command.arguments)?,
+            CommandType::Limit => self.limit_column_from_args(&command.arguments)?,
             _ => (),
         }
         Ok(())
@@ -570,6 +582,11 @@ impl Processor {
                 utils::write_to_stdout(&format!("{} | {}\n", index - 1, line))?;
             }
         }
+        Ok(())
+    }
+
+    // TODO
+    fn limit_column_from_args(&self, args: &Vec<String>) -> CedResult<()> {
         Ok(())
     }
 }
