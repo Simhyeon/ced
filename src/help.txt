@@ -16,8 +16,11 @@ import, i
 write, w <CACHE : bool>{Optional, Default=true}
 	Write ced virtual data into a real file. Previous file will be cached in temporary file. Default is true
 
-print, p
+print, p <VIEWER COMMAND>{Optional}
 	Print current ced virtual data.
+
+print-column, pc <COLUMN_NAME>
+	Print column information
 
 quit, q
 	Quit from ced editor
@@ -54,6 +57,18 @@ move, m <ORIGINAL: usize> <TARGET: usize>
 
 move-column, mc <Original: usize> <TARGET: usize>
 	Move column from original to target index
+
+limit, l
+	Set limiter for column with interactive prompt
+
+schema, s <FILE>
+	Read schema file
+
+schema-export, se <FILE>
+	Export export to file
+
+schema-init, si <FILE>{Optional,default=ced_schema.csv}
+	Initiate a file with default schema header
 
 undo, u
 	Undo previous command
