@@ -1,4 +1,6 @@
 use super::utils;
+use crate::{ValueLimiter, Value};
+use regex::Regex;
 use crate::error::{CedError, CedResult};
 use crate::processor::Processor;
 use crate::value::ValueType;
@@ -29,6 +31,7 @@ pub enum CommandType {
     MoveColumn,
     Exit,
     Print,
+    PrintColumn,
     Limit,
     None,
 }
@@ -43,6 +46,7 @@ impl CommandType {
             "create" | "c" => Self::Create,
             "write" | "w" => Self::Write,
             "print" | "p" => Self::Print,
+            "print-column" | "pc" => Self::PrintColumn,
             "add-row" | "ar" => Self::AddRow,
             "exit" | "quit" | "q" => Self::Exit,
             "add-column" | "ac" => Self::AddColumn,
@@ -170,7 +174,7 @@ impl CommandLoop {
     fn execute_command(&mut self, command: &Command) -> CedResult<()> {
         // DEBUG NOTE TODO
         #[cfg(debug_assertions)]
-        println!("{:?}", command);
+        utils::write_to_stderr(&format!("{:?}\n", command))?;
 
         match command.command_type {
             CommandType::Undo | CommandType::Redo => {
@@ -191,6 +195,7 @@ impl CommandLoop {
                 | CommandType::None
                 | CommandType::Version
                 | CommandType::Print => (),
+                | CommandType::PrintColumn => (),
             _ => self.history.take_snapshot(&self.processor.data),
         }
 
@@ -220,15 +225,17 @@ impl Processor {
     pub fn execute_command(&mut self, command: &Command) -> CedResult<()> {
         match command.command_type {
             CommandType::Version => utils::write_to_stdout("ced, 0.1.1\n")?,
+            CommandType::None => utils::write_to_stdout("No such command \n")?,
             CommandType::Help => utils::write_to_stdout(include_str!("../../src/help.txt"))?,
             CommandType::Import => self.import_file_from_args(&command.arguments)?,
             CommandType::Export => self.write_to_file_from_args(&command.arguments)?,
             CommandType::Write => self.overwrite_to_file_from_args(&command.arguments)?,
             CommandType::Create => {
-                self.add_column_array(&command.arguments);
+                self.add_column_array(&command.arguments)?;
                 utils::write_to_stdout("New columns added\n")?;
             }
             CommandType::Print => self.print(&command.arguments)?,
+            CommandType::PrintColumn => self.print_column(&command.arguments)?,
             CommandType::AddRow => self.add_row_from_args(&command.arguments)?,
             CommandType::DeleteRow => self.remove_row_from_args(&command.arguments)?,
             CommandType::DeleteColumn => self.remove_column_from_args(&command.arguments)?,
@@ -239,7 +246,7 @@ impl Processor {
             CommandType::RenameColumn => self.rename_column_from_args(&command.arguments)?,
             CommandType::MoveRow => self.move_row_from_args(&command.arguments)?,
             CommandType::MoveColumn => self.move_column_from_args(&command.arguments)?,
-            CommandType::Limit => self.limit_column_from_args(&command.arguments)?,
+            CommandType::Limit => self.limit_column_from_args()?,
             _ => (),
         }
         Ok(())
@@ -270,14 +277,14 @@ impl Processor {
         }
         let src_number = self
             .data
-            .get_column_index(&args[0])
+            .try_get_column_index(&args[0])
             .ok_or(CedError::InvalidColumn(format!(
                 "Column : \"{}\" is not valid",
                 args[0]
             )))?;
         let target_number = self
             .data
-            .get_column_index(&args[1])
+            .try_get_column_index(&args[1])
             .ok_or(CedError::InvalidColumn(format!(
                 "Column : \"{}\" is not valid",
                 args[1]
@@ -356,7 +363,7 @@ impl Processor {
         })?;
         let column = self
             .data
-            .get_column_index(coord[1])
+            .try_get_column_index(coord[1])
             .ok_or(CedError::InvalidColumn(format!(
                 "Column : \"{}\" is not valid",
                 coord[1]
@@ -429,7 +436,7 @@ impl Processor {
             column_type = ValueType::from_str(&args[2]);
         }
 
-        self.add_column(column_number, column_name, column_type, None);
+        self.add_column(column_number, column_name, column_type, None)?;
         utils::write_to_stdout("New column added\n")?;
         Ok(())
     }
@@ -455,11 +462,10 @@ impl Processor {
         let column_count = if args.len() == 0 {
             self.data.get_column_count()
         } else {
-            args[0]
-                .parse::<usize>()
-                .map_err(|_| CedError::CliError(format!("\"{}\" is not a valid index", args[0])))?
-        }
-        .sub(1);
+            self.data
+                .try_get_column_index(&args[0])
+                .ok_or(CedError::InvalidColumn(format!("")))?
+        };
 
         self.remove_column(column_count)?;
         utils::write_to_stdout("A column removed\n")?;
@@ -520,7 +526,7 @@ impl Processor {
         let csv = self.data.to_string();
         // Use given command
         if args.len() >= 1 {
-            self.print_with_viwer(csv, &args[0])?;
+            self.print_with_viewer(csv, &args[0], &args[1..])?;
         } else {
             self.print_with_numbers(&csv)?;
         }
@@ -528,18 +534,39 @@ impl Processor {
         Ok(())
     }
 
-    fn print_with_viwer(&self, csv: String, viewer: &str) -> CedResult<()> {
+    fn print_column(&self, args: &Vec<String>) -> CedResult<()> {
+        if args.len() == 0 {
+            return Err(CedError::CliError(format!(
+                "Cannot print column without name"
+            )));
+        }
+        if let Some(col) = self.data.try_get_column_index(&args[0]) {
+            if col < self.data.get_column_count() {
+                let col = self.get_column(col);
+                utils::write_to_stdout(&format!("{:#?}\n", col.unwrap()))?;
+                return Ok(());
+            }
+        }
+        utils::write_to_stdout("No such column\n")?;
+        Ok(())
+    }
+
+
+    fn print_with_viewer(&self, csv: String, viewer: &str, args: &[String]) -> CedResult<()> {
         let mut process = std::process::Command::new(viewer)
+            .args(args)
             .stdin(Stdio::piped())
             .spawn()
-            .expect("failed to execute process");
-        let mut stdin = process.stdin.take().expect("Failed to open stdin");
+            .map_err(|_| CedError::CliError(format!("Failed to execute print command : \"{}\"", viewer)))?;
+        let mut stdin = process.stdin.take()
+            .ok_or(CedError::CliError("Failed to read from stdin".to_string()))?;
         std::thread::spawn(move || {
             stdin
                 .write_all(csv.as_bytes())
                 .expect("Failed to write to stdin");
         });
-        let output = process.wait_with_output().expect("Failed to read stdout");
+        let output = process.wait_with_output()
+            .map_err(|_| CedError::CliError("Failed to write to stdout".to_string()))?;
         let out_content = String::from_utf8_lossy(&output.stdout);
         let err_content = String::from_utf8_lossy(&output.stderr);
 
@@ -555,7 +582,7 @@ impl Processor {
     fn print_with_numbers(&self, csv: &str) -> CedResult<()> {
         // Empty csv value, return early
         if csv.len() == 0 {
-            println!(": CSV is empty :");
+            utils::write_to_stderr(": CSV is empty :\n")?;
             return Ok(());
         }
         // TODO
@@ -585,8 +612,46 @@ impl Processor {
         Ok(())
     }
 
-    // TODO
-    fn limit_column_from_args(&self, args: &Vec<String>) -> CedResult<()> {
+    pub fn limit_column_from_args(&mut self) -> CedResult<()> {
+        self.add_limiter_prompt()
+    }
+
+    fn add_limiter_prompt(&mut self) -> CedResult<()> {
+        utils::write_to_stdout("Column = ")?;
+        let column = utils::read_stdin(true)?;
+
+        utils::write_to_stdout("Type (Text|Number) = ")?;
+        let column_type = utils::read_stdin(true)?;
+
+        utils::write_to_stdout("Default = ")?;
+        let default = utils::read_stdin(true)?;
+
+        utils::write_to_stdout("Variants = ")?;
+        let variants = utils::read_stdin(true)?;
+
+        utils::write_to_stdout("Pattern = ")?;
+        let pattern = utils::read_stdin(true)?;
+
+        let mut limiter = ValueLimiter::default();
+        let vt = ValueType::from_str(&column_type);
+        limiter.set_type(vt);
+
+        // Default value is necessary for complicated limiter
+        if !default.is_empty() {
+            let default = Value::from_str(&default,vt)?;
+
+            // DO variants
+            if pattern.is_empty() {
+                let mut values = vec![];
+                for var in variants.split_whitespace() {
+                    values.push(Value::from_str(var,vt)?);
+                }
+                limiter.set_variant(default, &values)?;
+            } else { // Do patterns
+                limiter.set_pattern(default, Regex::new(&pattern).expect("Failed to create pattern"))?;
+            }
+        };
+        self.set_limiter(&column, limiter)?;
         Ok(())
     }
 }
