@@ -20,7 +20,7 @@ pub fn main() -> CedResult<()> {
     }
 
     // Start command loop
-    use ced::{CommandLoop, Command};
+    use ced::{Command, CommandLoop};
     let mut command_loop = CommandLoop::new();
     if let Some(file) = import {
         command_loop.feed_command(&Command::from_str(&format!("import {}", file.display()))?)?;
@@ -42,7 +42,7 @@ fn match_import(arg: &str) -> CedResult<PathBuf> {
 ///
 /// Return : if match should return early
 #[cfg(feature = "cli")]
-fn match_flags(flag : &str) -> CedResult<bool> {
+fn match_flags(flag: &str) -> CedResult<bool> {
     match flag {
         "--version" | "-v" => {
             println!("ced, 0.1.1");

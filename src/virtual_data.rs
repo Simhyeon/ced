@@ -261,9 +261,15 @@ impl VirtualData {
         column_type: ValueType,
         limiter: Option<ValueLimiter>,
     ) -> CedResult<()> {
-        if let Some(_) = self.try_get_column_index(column_name) { return Err(CedError::InvalidColumn(format!("Cannot add existing column or number named column"))); }
+        if let Some(_) = self.try_get_column_index(column_name) {
+            return Err(CedError::InvalidColumn(format!(
+                "Cannot add existing column or number named column"
+            )));
+        }
         if let Ok(_) = column_name.parse::<isize>() {
-            return Err(CedError::InvalidColumn(format!("Cannot add number named column"))); 
+            return Err(CedError::InvalidColumn(format!(
+                "Cannot add number named column"
+            )));
         }
         let new_column = Column::new(column_name, column_type, limiter);
         let default_value = new_column.get_default_value();
@@ -330,7 +336,7 @@ impl VirtualData {
                 Ok(())
             } else {
                 return Err(CedError::InvalidCellData(format!(
-                            "Given cell data failed to match limiter's restriction",
+                    "Given cell data failed to match limiter's restriction",
                 )));
             }
         } else {
@@ -405,7 +411,7 @@ impl Column {
     }
 
     pub(crate) fn set_limiter(&mut self, limiter: ValueLimiter) {
-        self.column_type = limiter.get_type(); 
+        self.column_type = limiter.get_type();
         self.limiter = limiter;
     }
 

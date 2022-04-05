@@ -1,8 +1,8 @@
 use regex::Regex;
 
-use crate::{CedResult, CedError};
+use crate::{CedError, CedResult};
 
-#[derive(Clone,Eq,PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Value {
     Number(isize),
     Text(String),
@@ -15,7 +15,7 @@ impl Value {
             Self::Text(_) => ValueType::Text,
         }
     }
-    pub fn from_str(src : &str, value_type: ValueType) -> CedResult<Self> {
+    pub fn from_str(src: &str, value_type: ValueType) -> CedResult<Self> {
         Ok(match value_type {
             ValueType::Number => {
                 let src_number = src.parse::<isize>().map_err(|_| {
@@ -23,9 +23,7 @@ impl Value {
                 })?;
                 Value::Number(src_number)
             }
-            ValueType::Text => {
-                Value::Text(src.to_string())
-            }
+            ValueType::Text => Value::Text(src.to_string()),
         })
     }
 }
@@ -56,7 +54,7 @@ impl ValueLimiter {
         // Only when value typ matches limiter's type
         if self.value_type != value.get_type() {
             return false;
-        } 
+        }
         match value {
             Value::Number(num) => {
                 if let Some(variant) = self.variant.as_ref() {
@@ -100,9 +98,11 @@ impl ValueLimiter {
         self.variant.as_ref()
     }
 
-    pub fn set_variant(&mut self, default: Value ,variants: &Vec<Value>) -> CedResult<()> {
+    pub fn set_variant(&mut self, default: Value, variants: &Vec<Value>) -> CedResult<()> {
         if !variants.contains(&default) {
-            return Err(CedError::InvalidLimiter(format!("Default value should be among one of variants")));
+            return Err(CedError::InvalidLimiter(format!(
+                "Default value should be among one of variants"
+            )));
         }
         self.default.replace(default);
         self.variant.replace(variants.to_vec());
@@ -115,13 +115,14 @@ impl ValueLimiter {
 
     pub fn set_pattern(&mut self, default: Value, pattern: Regex) -> CedResult<()> {
         if !pattern.is_match(&default.to_string()) {
-            return Err(CedError::InvalidLimiter(format!("Default value should match pattern")));
+            return Err(CedError::InvalidLimiter(format!(
+                "Default value should match pattern"
+            )));
         }
         self.default.replace(default);
         self.pattern.replace(pattern);
         Ok(())
     }
-
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]

@@ -220,7 +220,7 @@ impl Processor {
         let header = content.next();
         if let None = header {
             return Err(CedError::InvalidRowData(format!(
-                        "Given file does not have a header"
+                "Given file does not have a header"
             )));
         }
 
@@ -233,7 +233,13 @@ impl Processor {
     }
 
     pub fn set_limiter(&mut self, column: &str, limiter: ValueLimiter) -> CedResult<()> {
-        let column = self.data.try_get_column_index(column).ok_or(CedError::InvalidColumn(format!("{} is not a valid column", column)))?;
+        let column = self
+            .data
+            .try_get_column_index(column)
+            .ok_or(CedError::InvalidColumn(format!(
+                "{} is not a valid column",
+                column
+            )))?;
         self.data.set_limiter(column, limiter)?;
         Ok(())
     }

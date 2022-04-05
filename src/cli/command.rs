@@ -1,10 +1,10 @@
 use super::utils;
-use crate::{ValueLimiter, Value};
-use regex::Regex;
 use crate::error::{CedError, CedResult};
 use crate::processor::Processor;
 use crate::value::ValueType;
 use crate::virtual_data::VirtualData;
+use crate::{Value, ValueLimiter};
+use regex::Regex;
 use std::io::Write;
 use std::process::Stdio;
 use std::{ops::Sub, path::Path};
@@ -58,7 +58,7 @@ impl CommandType {
             "rename-column" | "rc" => Self::RenameColumn,
             "move-row" | "move" | "m" => Self::MoveRow,
             "move-column" | "mc" => Self::MoveColumn,
-            "limit"| "l" => Self::Limit,
+            "limit" | "l" => Self::Limit,
             "undo" | "u" => Self::Undo,
             "redo" | "r" => Self::Redo,
             _ => Self::None,
@@ -187,15 +187,15 @@ impl CommandLoop {
             }
             // Un-redoable commands
             CommandType::Help
-                | CommandType::Exit
-                | CommandType::Import
-                | CommandType::Export
-                | CommandType::Create
-                | CommandType::Write
-                | CommandType::None
-                | CommandType::Version
-                | CommandType::Print => (),
-                | CommandType::PrintColumn => (),
+            | CommandType::Exit
+            | CommandType::Import
+            | CommandType::Export
+            | CommandType::Create
+            | CommandType::Write
+            | CommandType::None
+            | CommandType::Version
+            | CommandType::Print => (),
+            CommandType::PrintColumn => (),
             _ => self.history.take_snapshot(&self.processor.data),
         }
 
@@ -275,20 +275,20 @@ impl Processor {
                 "Insufficient arguments for move-column"
             )));
         }
-        let src_number = self
-            .data
-            .try_get_column_index(&args[0])
-            .ok_or(CedError::InvalidColumn(format!(
-                "Column : \"{}\" is not valid",
-                args[0]
-            )))?;
-        let target_number = self
-            .data
-            .try_get_column_index(&args[1])
-            .ok_or(CedError::InvalidColumn(format!(
-                "Column : \"{}\" is not valid",
-                args[1]
-            )))?;
+        let src_number =
+            self.data
+                .try_get_column_index(&args[0])
+                .ok_or(CedError::InvalidColumn(format!(
+                    "Column : \"{}\" is not valid",
+                    args[0]
+                )))?;
+        let target_number =
+            self.data
+                .try_get_column_index(&args[1])
+                .ok_or(CedError::InvalidColumn(format!(
+                    "Column : \"{}\" is not valid",
+                    args[1]
+                )))?;
         self.move_column(src_number, target_number)?;
         utils::write_to_stdout("Column moved\n")?;
         Ok(())
@@ -551,21 +551,25 @@ impl Processor {
         Ok(())
     }
 
-
     fn print_with_viewer(&self, csv: String, viewer: &str, args: &[String]) -> CedResult<()> {
         let mut process = std::process::Command::new(viewer)
             .args(args)
             .stdin(Stdio::piped())
             .spawn()
-            .map_err(|_| CedError::CliError(format!("Failed to execute print command : \"{}\"", viewer)))?;
-        let mut stdin = process.stdin.take()
+            .map_err(|_| {
+                CedError::CliError(format!("Failed to execute print command : \"{}\"", viewer))
+            })?;
+        let mut stdin = process
+            .stdin
+            .take()
             .ok_or(CedError::CliError("Failed to read from stdin".to_string()))?;
         std::thread::spawn(move || {
             stdin
                 .write_all(csv.as_bytes())
                 .expect("Failed to write to stdin");
         });
-        let output = process.wait_with_output()
+        let output = process
+            .wait_with_output()
             .map_err(|_| CedError::CliError("Failed to write to stdout".to_string()))?;
         let out_content = String::from_utf8_lossy(&output.stdout);
         let err_content = String::from_utf8_lossy(&output.stderr);
@@ -638,17 +642,21 @@ impl Processor {
 
         // Default value is necessary for complicated limiter
         if !default.is_empty() {
-            let default = Value::from_str(&default,vt)?;
+            let default = Value::from_str(&default, vt)?;
 
             // DO variants
             if pattern.is_empty() {
                 let mut values = vec![];
                 for var in variants.split_whitespace() {
-                    values.push(Value::from_str(var,vt)?);
+                    values.push(Value::from_str(var, vt)?);
                 }
                 limiter.set_variant(default, &values)?;
-            } else { // Do patterns
-                limiter.set_pattern(default, Regex::new(&pattern).expect("Failed to create pattern"))?;
+            } else {
+                // Do patterns
+                limiter.set_pattern(
+                    default,
+                    Regex::new(&pattern).expect("Failed to create pattern"),
+                )?;
             }
         };
         self.set_limiter(&column, limiter)?;
