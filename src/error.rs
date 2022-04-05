@@ -4,6 +4,10 @@ pub type CedResult<T> = Result<T, CedError>;
 
 #[derive(Error, Debug)]
 pub enum CedError {
+    #[error("ERR : Invalid limiter =\n{0}")]
+    InvalidLimiter(String),
+    #[error("ERR : Invalid type =\n{0}")]
+    InvalidValueType(String),
     #[error("ERR : IO Error =\n{0}")]
     IoError(IoErrorWithMeta),
     #[error("ERR : Index out of range")]
