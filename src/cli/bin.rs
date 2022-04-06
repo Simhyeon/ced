@@ -45,7 +45,7 @@ fn match_import(arg: &str) -> CedResult<PathBuf> {
 fn match_flags(flag: &str) -> CedResult<bool> {
     match flag {
         "--version" | "-v" => {
-            println!("ced, 0.1.2");
+            println!("ced, 0.1.3");
             return Ok(true);
         }
         "--help" | "-h" => {
