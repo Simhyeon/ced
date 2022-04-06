@@ -9,13 +9,13 @@ pub fn main() -> CedResult<()> {
     let mut import = None;
 
     // Print basic command line information
-    for arg in args {
+    for arg in &args[1..] {
         if arg.starts_with("--") || arg.starts_with("-") {
-            if match_flags(&arg)? {
+            if match_flags(arg)? {
                 return Ok(());
             }
         } else {
-            import.replace(match_import(&arg)?);
+            import.replace(match_import(arg)?);
         }
     }
 
