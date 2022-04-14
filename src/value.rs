@@ -27,6 +27,13 @@ impl Value {
             ValueType::Text => Value::Text(src.to_string()),
         })
     }
+
+    pub fn empty(value_type: ValueType) -> Self {
+        match value_type {
+            ValueType::Number => Self::Number(0),
+            ValueType::Text => Self::Text(String::new()),
+        }
+    }
 }
 
 impl std::fmt::Display for Value {
@@ -51,11 +58,27 @@ pub struct ValueLimiter {
 }
 
 impl ValueLimiter {
-    pub fn qualify(&self, value: &Value) -> bool {
-        // Only when value typ matches limiter's type
-        if self.value_type != value.get_type() {
-            return false;
+    pub fn is_convertible(&self, value:&Value) -> Option<ValueType> {
+        // TODO
+        // Only when value type matches limiter's type
+        match self.value_type {
+            ValueType::Number => {
+                if let Value::Text(text) = value { // String to Number
+                    match text.parse::<isize>() {
+                        Ok(_) => Some(ValueType::Number),
+                        Err(_) => None,
+                    }
+                } else { // Number to number
+                    Some(ValueType::Number)
+                }
+            }
+            ValueType::Text => {
+                Some(ValueType::Text)
+            }
         }
+    }
+
+    pub fn qualify(&self, value: &Value) -> bool {
         match value {
             Value::Number(num) => {
                 if let Some(variant) = self.variant.as_ref() {
@@ -111,7 +134,11 @@ impl ValueLimiter {
                     Regex::new(&pattern).expect("Failed to create pattern"),
                 )?;
             }
-        };
+        } else { // Default is empty
+            if !pattern.is_empty() || !variants.is_empty() {
+                return Err(CedError::InvalidLimiter(format!("Either pattern or variants needs default value to be valid")));
+            }
+        }
         Ok(limiter)
     }
 
