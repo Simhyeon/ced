@@ -9,7 +9,7 @@ pub(crate) mod value;
 pub(crate) mod virtual_data;
 
 #[cfg(feature = "cli")]
-pub use cli::{Command, CommandLoop};
+pub use cli::{Command, CommandLoop, help};
 pub use error::{CedError, CedResult};
 pub use processor::Processor;
 pub use value::{Value, ValueLimiter, ValueType};
