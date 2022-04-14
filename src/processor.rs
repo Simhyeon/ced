@@ -78,7 +78,7 @@ impl Processor {
                 )));
             }
 
-            self.add_row_from_strings(self.data.get_row_count(), split)?;
+            self.add_row_from_strings(self.get_row_count(), split)?;
             row = content.next();
             row_count += 1;
         }
@@ -116,7 +116,7 @@ impl Processor {
     }
 
     pub fn edit_cell(&mut self, x: usize, y: usize, input: &str) -> CedResult<()> {
-        self.data.set_data_from_string(x, y, input)?;
+        self.data.set_cell_from_string(x, y, input)?;
         Ok(())
     }
 
@@ -126,12 +126,11 @@ impl Processor {
         Ok(())
     }
 
-    pub fn edit_row(&mut self, row_number: usize, input: &str) -> CedResult<()> {
+    pub fn edit_row(&mut self, row_number: usize, input: &Vec<impl AsRef<str>>) -> CedResult<()> {
         self.data.set_row(
             row_number,
-            input
-                .split(",")
-                .map(|s| Value::Text(s.to_owned()))
+            input.iter()
+                .map(|s| Value::Text(s.as_ref().to_owned()))
                 .collect(),
         )?;
         Ok(())
@@ -161,9 +160,10 @@ impl Processor {
         column_name: &str,
         column_type: ValueType,
         limiter: Option<ValueLimiter>,
+        placeholder: Option<Value>
     ) -> CedResult<()> {
         self.data
-            .insert_column(column_number, column_name, column_type, limiter)?;
+            .insert_column(column_number, column_name, column_type, limiter, placeholder)?;
         Ok(())
     }
 
@@ -183,6 +183,7 @@ impl Processor {
                 &col.as_ref(),
                 ValueType::Text,
                 None,
+                None
             )?;
         }
         Ok(())
@@ -251,6 +252,14 @@ impl Processor {
     }
 
     // <MISC>
+    pub fn get_row_count(&self) -> usize {
+        self.data.get_row_count()
+    }
+
+    pub fn get_column_count(&self) -> usize {
+        self.data.get_column_count()
+    }
+
     /// Get last row index
     pub fn last_row_index(&self) -> usize {
         self.data.get_row_count().max(1) - 1
@@ -264,6 +273,10 @@ impl Processor {
     /// Get virtual data as string form
     pub fn get_data(&self) -> String {
         self.data.to_string()
+    }
+
+    pub fn get_cell(&self, row: usize, column: usize) -> CedResult<Option<&Value>> {
+        self.data.get_cell(row, column)
     }
 
     pub fn get_row(&self, index: usize) -> Option<&Row> {
@@ -283,6 +296,12 @@ impl Processor {
     // </MISC>
 
     // <DRY>
+    /// This creates arbritrary column name which is unique for computer
+    ///
+    /// Name starts with alphabetical order and lengthend sequentially
+    ///
+    /// e.g.)
+    /// a,b,c ... aa,bb,cc ... aaa,bbb,ccc
     fn make_arbitrary_column(&self, size: usize) -> Vec<String> {
         let mut column_names: Vec<String> = vec![];
         for index in 0..size {
