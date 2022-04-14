@@ -1,5 +1,5 @@
 #[cfg(feature = "cli")]
-use ced::CedResult;
+use ced::{Command, CommandLoop, help, CedResult};
 #[cfg(feature = "cli")]
 use std::path::PathBuf;
 
@@ -11,7 +11,7 @@ pub fn main() -> CedResult<()> {
     // Print basic command line information
     for arg in &args[1..] {
         if arg.starts_with("--") || arg.starts_with("-") {
-            if match_flags(arg)? {
+            if match_returning_flags(arg)? {
                 return Ok(());
             }
         } else {
@@ -20,11 +20,22 @@ pub fn main() -> CedResult<()> {
     }
 
     // Start command loop
-    use ced::{Command, CommandLoop};
     let mut command_loop = CommandLoop::new();
+
     if let Some(file) = import {
-        command_loop.feed_command(&Command::from_str(&format!("import {}", file.display()))?)?;
+        if let Err(err) = command_loop.feed_command(&Command::from_str(&format!("import {}", file.display()))?,true) {
+            eprintln!("{}",err);
+            return Ok(());
+        }
     }
+
+    // TODO
+    //for arg in &args[1..] {
+        //if arg.starts_with("--") || arg.starts_with("-") {
+            //match_executing_flags(arg, &mut command_loop)?
+        //} 
+    //}
+
     command_loop
         .start_loop()
         .err()
@@ -42,20 +53,36 @@ fn match_import(arg: &str) -> CedResult<PathBuf> {
 ///
 /// Return : if match should return early
 #[cfg(feature = "cli")]
-fn match_flags(flag: &str) -> CedResult<bool> {
+fn match_returning_flags(flag: &str) -> CedResult<bool> {
     match flag {
         "--version" | "-v" => {
             println!("ced, 0.1.3");
             return Ok(true);
         }
         "--help" | "-h" => {
-            println!("{}", include_str!("../help.txt"));
+            help::print_help_text();
             return Ok(true);
         }
         _ => (),
     }
     Ok(false)
 }
+
+// TODO
+///// Match flags
+/////
+///// Return : if match should return early
+//#[cfg(feature = "cli")]
+//fn match_executing_flags(flag: &str, command_loop: &mut CommandLoop) -> CedResult<()> {
+    //match flag {
+        //"--version" | "-v" => {
+            //println!("ced, 0.1.3");
+            //return Ok(true);
+        //}
+        //_ => (),
+    //}
+    //Ok(false)
+//}
 
 // Placeholder for binary
 #[cfg(not(feature = "cli"))]
