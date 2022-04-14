@@ -1,0 +1,7 @@
+delete-column, dc <COLUMN: any>
+	Delete given column. Column can be either name or index.
+
+	e.g)
+		dc 2
+		dc count
+

@@ -1,0 +1,7 @@
+move-column, mc <Original: any> <TARGET: usize>
+	Move column from original to target index
+
+	e.g)
+		mc 0 5
+		mc count 2
+

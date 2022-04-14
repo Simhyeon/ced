@@ -1,0 +1,8 @@
+rename-column, rc <COLUMN: any> <NEW_NAME: string>
+	Rename a given column'name to new a name. Column can be either a name or an
+	index.
+
+	e.g)
+		rc count index
+		rc dead alive
+

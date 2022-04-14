@@ -1,0 +1,12 @@
+edit, e <COORDINATE: (usize,usize)> <VALUE: string>
+	Edit a cell with given coordinate and value. Second argument can also be a
+	name of the column.
+
+	**Syntax Caveat**
+	- Coordinate should not have a whitesapce in between.
+	- surplus whitespaces will be merged to a single whitespace.
+
+	e.g.)
+		e 0,2 hello world
+		e 4,address rhode island
+

@@ -1,0 +1,4 @@
+import, i
+	Import csv file into ced. Import file can be sent as first argument from
+	terminal.
+

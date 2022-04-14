@@ -1,0 +1,6 @@
+limit, l
+	Set limiter for column with interactive prompt
+
+	e.g)
+		limit 
+

@@ -1,0 +1,7 @@
+delete-row, dr <INDEX: usize>
+	Delete given row.
+
+	e.g)
+		dr 0
+		dr 3
+

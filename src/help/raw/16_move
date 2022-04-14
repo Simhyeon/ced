@@ -1,0 +1,7 @@
+move, move-row, m <ORIGINAL: usize> <TARGET: usize>
+	Move row from an original index to a target index.
+
+	e.g)
+		m 0 5
+		m 3 10
+

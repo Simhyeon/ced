@@ -1,0 +1,6 @@
+schema, s <FILE>
+	Read schema file
+
+	e.g)
+		s file_name_to_read
+

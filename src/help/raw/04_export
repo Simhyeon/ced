@@ -1,0 +1,6 @@
+export, x <FILE : String>
+	Export ced's virtual data into a file. This will create a new file if given
+	file doesn't exit. Existing content of the file will be truncated. 
+	e.g.)
+		export file_name
+

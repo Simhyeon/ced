@@ -1,0 +1,9 @@
+write, w <CACHE : bool>{Optional, Default=true}
+	Write ced's virtual data into a real file. Previous file's content will be
+	cached in temporary file. You can disable this behaviour with optional
+	argument.
+
+	e.g.)
+		write true
+		write false
+

@@ -1,0 +1,8 @@
+print, p <VIEWER COMMAND>{Optional}
+	Print current ced's virtual data. If CED_VIEWER is set, print will utilizie
+	it for printing. You can also feed optional argument for custom viewer
+
+	e.g)
+		print
+		print tidy-viewer
+

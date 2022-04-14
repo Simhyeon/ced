@@ -1,0 +1,176 @@
+Ced, 0.1.3
+
+Ced is a csv editor interface.
+
+* Commands
+
+version, v
+	Print version information
+
+help, h
+	Print this texts
+
+import, i
+	Import csv file into ced. Import file can be sent as first argument from
+	terminal.
+
+export, x <FILE : String>
+	Export ced's virtual data into a file. This will create a new file if given
+	file doesn't exit. Existing content of the file will be truncated. 
+	e.g.)
+		export file_name
+
+write, w <CACHE : bool>{Optional, Default=true}
+	Write ced's virtual data into a real file. Previous file's content will be
+	cached in temporary file. You can disable this behaviour with optional
+	argument.
+
+	e.g.)
+		write true
+		write false
+
+print, p <VIEWER COMMAND>{Optional}
+	Print current ced's virtual data. If CED_VIEWER is set, print will utilizie
+	it for printing. You can also feed optional argument for custom viewer
+
+	e.g)
+		print
+		print tidy-viewer
+
+print-column, pc <COLUMN_NAME>
+	Print a column's information
+
+	e.g)
+		pc 0
+		pc column_name
+
+create, c <COLUMN_NAMES>{Delimiter=space}
+	Create columns without types. Names should be separated by spaces.
+
+	e.g)
+		create a b c d e 
+		create id address name
+
+add-row, ar <Index: usize>{Optional} <Row: array>{Optional,Delimiter=comma}
+	Add new row into a given index. Empty arguments will trigger interactive
+	loop for data input.
+
+	e.g)
+		ar 
+		ar 5
+		ar 2 a,b,c,d,e
+
+add-column, ac <COLUMN_NAME: string> <INDEX: usize>{Optional} <TYPE: text|number>{Optional}
+	Add new column.
+
+	e.g)
+		ac address
+		ac id 2
+		ac phone-number text
+
+edit, e <COORDINATE: (usize,usize)> <VALUE: string>
+	Edit a cell with given coordinate and value. Second argument can also be a
+	name of the column.
+
+	**Syntax Caveat**
+	- Coordinate should not have a whitesapce in between.
+	- surplus whitespaces will be merged to a single whitespace.
+
+	e.g.)
+		e 0,2 hello world
+		e 4,address rhode island
+
+edit-row, er <INDEX: usize> <Values: Array>{Delimiter=comma}
+	Edit row with given values. Edit-row without second argument will trigger
+	interactive edit mode. The default value of interactive mode is original
+	cell's value.
+
+	e.g)
+		er 2
+		er 3 a,b,c,d
+
+edit-row-multiple, erm <START_INDEX: usize> <END_INDEX: usize>{Optional} 
+	Edit rows from given index. Ending index is optional and will proceed to
+	final row by default.
+
+	e.g)
+		erm 2
+		erm 2,5
+
+edit-column, ec <COLUMN: any> <Value: String>
+	Edit all columns with given value. Column can be either name or index.
+
+	e.g)
+		ec 1
+		ec count
+		ec dead false 
+
+delete-row, dr <INDEX: usize>
+	Delete given row.
+
+	e.g)
+		dr 0
+		dr 3
+
+delete-column, dc <COLUMN: any>
+	Delete given column. Column can be either name or index.
+
+	e.g)
+		dc 2
+		dc count
+
+rename-column, rc <COLUMN: any> <NEW_NAME: string>
+	Rename a given column'name to new a name. Column can be either a name or an
+	index.
+
+	e.g)
+		rc count index
+		rc dead alive
+
+move, move-row, m <ORIGINAL: usize> <TARGET: usize>
+	Move row from an original index to a target index.
+
+	e.g)
+		m 0 5
+		m 3 10
+
+move-column, mc <Original: any> <TARGET: usize>
+	Move column from original to target index
+
+	e.g)
+		mc 0 5
+		mc count 2
+
+limit, l
+	Set limiter for column with interactive prompt
+
+	e.g)
+		limit 
+
+schema, s <FILE>
+	Read schema file
+
+	e.g)
+		s file_name_to_read
+
+schema-export, se <FILE>
+	Export current virtual data's schema to a file
+
+	e.g)
+		se file_to_export
+
+schema-init, si <FILE>{Optional,default=ced_schema.csv}
+	Initiate a file with default schema headers
+
+	e.g)
+		si 
+		si file_to_create_as_schema
+
+undo, u
+	Undo previous command
+
+redo, r
+	Redo undid command
+
+quit, q
+	Quit from ced editor

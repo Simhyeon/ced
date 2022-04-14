@@ -1,0 +1,7 @@
+print-column, pc <COLUMN_NAME>
+	Print a column's information
+
+	e.g)
+		pc 0
+		pc column_name
+

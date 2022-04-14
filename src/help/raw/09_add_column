@@ -1,0 +1,12 @@
+add-column, ac <COLUMN_NAME: string> 
+               <INDEX: usize>{Optional} 
+			   <TYPE: text|number>{Optional}
+			   <PLACEHOLDER: String>{Optional}
+	Add new column. Placeholder should accord with given type.
+
+	e.g)
+		ac address
+		ac id 2
+		ac count 3 number
+		ac dead 4 text false
+

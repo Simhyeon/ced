@@ -1,0 +1,7 @@
+create, c <COLUMN_NAMES>{Delimiter=space}
+	Create columns without types. Names should be separated by spaces.
+
+	e.g)
+		create a b c d e 
+		create id address name
+

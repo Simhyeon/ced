@@ -1,0 +1,6 @@
+schema-export, se <FILE>
+	Export current virtual data's schema to a file
+
+	e.g)
+		se file_to_export
+

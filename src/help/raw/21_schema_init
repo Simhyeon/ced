@@ -1,0 +1,7 @@
+schema-init, si <FILE>{Optional,default=ced_schema.csv}
+	Initiate a file with default schema headers
+
+	e.g)
+		si 
+		si file_to_create_as_schema
+

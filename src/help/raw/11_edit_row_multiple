@@ -1,0 +1,8 @@
+edit-row-multiple, erm <START_INDEX: usize>{Optional} <END_INDEX: usize>{Optional} 
+	Edit rows from given index. Start index is 0 by default and end index is row count by default.
+
+	e.g)
+		erm
+		erm 2
+		erm 2,5
+
