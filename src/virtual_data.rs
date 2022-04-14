@@ -32,7 +32,7 @@ impl std::fmt::Display for VirtualData {
             let row_value = columns
                 .iter()
                 .map(|name| {
-                    row.get_value(name)
+                    row.get_cell_value(name)
                         .unwrap_or(&Value::Text(String::new()))
                         .to_string()
                 })
@@ -56,11 +56,11 @@ impl VirtualData {
         }
     }
 
-    pub fn set_data_from_string(&mut self, x: usize, y: usize, value: &str) -> CedResult<()> {
+    pub fn set_cell_from_string(&mut self, x: usize, y: usize, value: &str) -> CedResult<()> {
         let key_column = self.get_column_if_valid(x, y)?;
         match key_column.column_type {
-            ValueType::Text => self.set_data(x, y, Value::Text(value.to_string())),
-            ValueType::Number => self.set_data(
+            ValueType::Text => self.set_cell(x, y, Value::Text(value.to_string())),
+            ValueType::Number => self.set_cell(
                 x,
                 y,
                 Value::Number(value.parse().map_err(|_| {
@@ -181,7 +181,7 @@ impl VirtualData {
         }
         let column = &self.columns[column_index.unwrap()].name;
         for row in &mut self.rows {
-            row.update_value(column, value.clone());
+            row.update_cell_value(column, value.clone());
         }
         Ok(())
     }
@@ -214,37 +214,50 @@ impl VirtualData {
 
         let row = self.rows.get_mut(row_number).unwrap();
         for (col, value) in col_value_iter {
-            row.update_value(&col.name, value.clone())
+            row.update_cell_value(&col.name, value.clone())
         }
 
         Ok(())
     }
 
-    /// Set data by coordinate
-    pub fn set_data(&mut self, x: usize, y: usize, value: Value) -> CedResult<()> {
+    /// get cell data by coordinate
+    pub fn get_cell(&self, x: usize, y: usize) -> CedResult<Option<&Value>> {
+        let name = self.get_column_if_valid(x, y)?.name.to_owned();
+        let value = self.rows[x].get_cell_value(&name);
+
+        Ok(value)
+    }
+
+    /// Set cell by coordinate
+    pub fn set_cell(&mut self, x: usize, y: usize, value: Value) -> CedResult<()> {
         let name = self.get_column_if_valid(x, y)?.name.to_owned();
 
         self.is_valid_column_data(y, &value)?;
-        self.rows[x].update_value(&name, value);
+        self.rows[x].update_cell_value(&name, value);
 
         Ok(())
     }
 
     // THis should insert row with given column limiters
-    pub fn insert_row(&mut self, row: usize, source: Option<&Vec<Value>>) -> CedResult<()> {
+    pub fn insert_row(&mut self, row_number: usize, source: Option<&Vec<Value>>) -> CedResult<()> {
+        if row_number > self.get_row_count() {
+            return Err(CedError::InvalidColumn(format!(
+                "Cannot add row to out of range position : {}", row_number
+            )));
+        }
         let mut new_row = Row::new();
         if let Some(source) = source {
             self.check_row_length(source)?;
             self.columns
                 .iter()
                 .zip(source.iter())
-                .for_each(|(col, v)| new_row.insert_value(&col.name, v.clone()));
+                .for_each(|(col, v)| new_row.insert_cell(&col.name, v.clone()));
         } else {
             for col in &self.columns {
-                new_row.insert_value(&col.name, col.get_default_value());
+                new_row.insert_cell(&col.name, col.get_default_value());
             }
         }
-        self.rows.insert(row, new_row);
+        self.rows.insert(row_number, new_row);
         Ok(())
     }
 
@@ -258,11 +271,17 @@ impl VirtualData {
 
     pub fn insert_column(
         &mut self,
-        column: usize,
+        column_number: usize,
         column_name: &str,
         column_type: ValueType,
         limiter: Option<ValueLimiter>,
+        placeholder: Option<Value>,
     ) -> CedResult<()> {
+        if column_number > self.get_column_count() {
+            return Err(CedError::InvalidColumn(format!(
+                "Cannot add column to out of range position : {}", column_number
+            )));
+        }
         if let Some(_) = self.try_get_column_index(column_name) {
             return Err(CedError::InvalidColumn(format!(
                 "Cannot add existing column or number named column"
@@ -276,9 +295,9 @@ impl VirtualData {
         let new_column = Column::new(column_name, column_type, limiter);
         let default_value = new_column.get_default_value();
         for row in &mut self.rows {
-            row.insert_value(&new_column.name, default_value.clone());
+            row.insert_cell(&new_column.name, placeholder.clone().unwrap_or(default_value.clone()));
         }
-        self.columns.insert(column, new_column);
+        self.columns.insert(column_number, new_column);
         Ok(())
     }
 
@@ -286,7 +305,7 @@ impl VirtualData {
         let name = self.get_column_if_valid(0, column)?.name.to_owned();
 
         for row in &mut self.rows {
-            row.remove_value(&name);
+            row.remove_cell(&name);
         }
 
         self.columns.remove(column);
@@ -308,13 +327,23 @@ impl VirtualData {
         let column = &mut self.columns[column];
         for (index, row) in self.rows.iter_mut().enumerate() {
             let mut qualified = true;
-            if let Some(value) = row.get_value(&column.name) {
-                if !limiter.qualify(value) {
+            let mut converted = None;
+            let mut convert_to = None;
+            if let Some(value) = row.get_cell_value(&column.name) {
+                // Check if value can be converted at most
+                if let Some(ttype) = limiter.is_convertible(value) {
+                    converted.replace(Value::from_str(&value.to_string(), ttype)?);
+                    convert_to = Some(ttype);
+                }
+
+                // Check if value qualify limiter condition
+                if !limiter.qualify(converted.as_ref().unwrap_or(value)) {
                     qualified = false;
+                    convert_to = None; 
                     if panic {
                         return Err(CedError::InvalidCellData(format!(
-                            "Cell {},{} doesn't match limiter's qualification",
-                            index, column.name
+                                    "Cell {},{} doesn't match limiter's qualification",
+                                    index, column.name
                         )));
                     }
                 }
@@ -324,11 +353,13 @@ impl VirtualData {
                 )));
             }
 
-            // Force update to defualt value
-            if !qualified && !panic {
-                // It is safe to unwrap because default is set already
-                row.update_value(&column.name, limiter.get_default().unwrap().clone());
-            }
+            if let Some(ttype) = convert_to {
+                row.change_cell_type(&column.name, ttype)?;
+            } else if !qualified && !panic { // Force update to defualt value
+                // It is mostly safe to unwrap because default is required for pattern or variant
+                // but, limiter might only have a single "type" value
+                row.update_cell_value(&column.name, limiter.get_default().unwrap_or(&Value::empty(limiter.get_type())).clone());
+            } 
         }
         column.set_limiter(limiter);
         Ok(())
@@ -369,10 +400,20 @@ impl VirtualData {
     }
 
     // <DRY>
+    /// Get column index from src
+    ///
+    /// Src can be either colum name or column index
+    /// If colum index is out of range, it returns none
     pub(crate) fn try_get_column_index(&self, src: &str) -> Option<usize> {
         let column_index = match src.parse::<usize>() {
             Err(_) => self.columns.iter().position(|c| c.name == src),
-            Ok(index) => Some(index),
+            Ok(index) => {
+                if index < self.get_column_count() {
+                    Some(index)
+                } else {
+                    None
+                }
+            },
         };
         column_index
     }
@@ -387,6 +428,7 @@ impl VirtualData {
         false
     }
 
+    /// Check if given coordinate exits and return target column
     fn get_column_if_valid(&self, x: usize, y: usize) -> CedResult<&Column> {
         if !self.is_valid_cell_coordinate(x, y) {
             return Err(CedError::OutOfRangeError);
@@ -523,19 +565,41 @@ impl Row {
         }
     }
 
-    pub fn insert_value(&mut self, key: &str, value: Value) {
+    pub fn insert_cell(&mut self, key: &str, value: Value) {
         self.values.insert(key.to_string(), value);
     }
 
-    pub fn get_value(&self, key: &str) -> Option<&Value> {
+    pub fn get_cell_value(&self, key: &str) -> Option<&Value> {
         self.values.get(key)
     }
 
-    pub fn update_value(&mut self, key: &str, value: Value) {
-        *self.values.get_mut(key).unwrap() = value;
+    pub fn update_cell_value(&mut self, key: &str, value: Value) {
+        if let Some(v) = self.values.get_mut(key) {
+            *v = value;
+        }
     }
 
-    pub(crate) fn remove_value(&mut self, key: &str) {
+    pub fn change_cell_type(&mut self, key:&str, target_type: ValueType) -> CedResult<()> {
+        if let Some(v) = self.values.get_mut(key) {
+            match v {
+                Value::Text(t) => {
+                    if target_type == ValueType::Number {
+                        *v = Value::Number(t.parse::<isize>().map_err(|_| {
+                            CedError::InvalidCellData(format!("\"{}\" is not a valid value to be converted to type : \"{}\"", t, target_type))
+                        })?);
+                    }
+                }
+                Value::Number(n) => {
+                    if target_type == ValueType::Text {
+                        *v = Value::Text(n.to_string());
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn remove_cell(&mut self, key: &str) {
         self.values.remove(key);
     }
 }
