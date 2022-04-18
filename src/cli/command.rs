@@ -253,7 +253,7 @@ impl Processor {
     /// Execute given command
     pub fn execute_command(&mut self, command: &Command) -> CedResult<()> {
         match command.command_type {
-            CommandType::Version => utils::write_to_stdout("ced, 0.1.3\n")?,
+            CommandType::Version => help::print_version(),
             CommandType::None => utils::write_to_stdout("No such command \n")?,
             CommandType::Help => self.print_help_from_args(&command.arguments)?,
             CommandType::Import => self.import_file_from_args(&command.arguments)?,

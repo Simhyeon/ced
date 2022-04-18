@@ -1,4 +1,4 @@
-Ced, 0.1.3
+Ced, 0.1.4
 
 Ced is a csv editor interface.
 
@@ -47,12 +47,16 @@ print-cell, pc <COORD: usize,column> <MODE : String>{Optional}
 		print-cell 0,count
 		pc 2,1 debug
 
-print-column, pl <COLUMN_NAME>
-	Print a column's information
+print-column, pl <COLUMN_NAME> <MODE>{Optional}
+	Print a column's information. Modes are following
+		- simple ( default )
+		- verbose,v 
+		- debug,d
 
 	e.g)
 		pl 0
 		pl column_name
+		pl col debug
 
 create, c <COLUMN_NAMES>{Delimiter=space}
 	Create columns without types. Names should be separated by spaces.
