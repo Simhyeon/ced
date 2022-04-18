@@ -6,6 +6,10 @@ pub fn print_help_text() {
     utils::write_to_stdout(HELP_TEXT).expect("Failed to print to terminal");
 }
 
+pub fn print_version() {
+    print!(include_str!("../help/version.txt"));
+}
+
 pub fn print_command_help(command: CommandType) {
     let out = match command {
         CommandType::Version => include_str!("../help/raw/01_version"),
@@ -29,6 +33,7 @@ pub fn print_command_help(command: CommandType) {
         CommandType::MoveColumn =>include_str!("../help/raw/17_move_column"),
         CommandType::Exit =>include_str!("../help/raw/32_quit"),
         CommandType::Print =>include_str!("../help/raw/05_print"),
+        CommandType::PrintCell =>include_str!("../help/raw/05_print_cell"),
         CommandType::PrintColumn =>include_str!("../help/raw/06_print_column"),
         CommandType::Limit =>include_str!("../help/raw/18_limit"),
         CommandType::Schema =>include_str!("../help/raw/19_schema"),

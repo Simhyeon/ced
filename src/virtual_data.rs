@@ -212,6 +212,8 @@ impl VirtualData {
             }
         }
 
+        // It is safe to unwrap because row_number 
+        // was validated by is_valid_cell_coordinate method.
         let row = self.rows.get_mut(row_number).unwrap();
         for (col, value) in col_value_iter {
             row.update_cell_value(&col.name, value.clone())
@@ -433,6 +435,8 @@ impl VirtualData {
         if !self.is_valid_cell_coordinate(x, y) {
             return Err(CedError::OutOfRangeError);
         }
+        // It is sfe to uwnrap because 
+        // it was validated by prior is_valid_cell_coordinate method
         let key_column = self.columns.get(y).unwrap();
         Ok(key_column)
     }

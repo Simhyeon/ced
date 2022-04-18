@@ -1,5 +1,7 @@
 mod command;
+pub mod parse;
 pub mod help;
-pub(crate) mod utils;
+pub mod utils;
 
-pub use command::{Command, CommandLoop};
+pub use command::{Command, CommandLoop, CommandType};
+pub use parse::{Parser, FlagType};

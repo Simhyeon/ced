@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{CedError, CedResult};
 use regex::Regex;
 
@@ -55,6 +57,22 @@ pub struct ValueLimiter {
     default: Option<Value>,
     variant: Option<Vec<Value>>,
     pattern: Option<Regex>, // -> This better be a regex
+}
+
+impl Display for ValueLimiter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f,"type : {}\n", self.value_type)?;
+        if let Some(var) = &self.variant{
+            write!(f,"default value : {:?}\n", &var)?;
+        }
+        if let Some(var) = &self.variant {
+            write!(f,"variants : {:?}", var)
+        } else if let Some(var) = &self.pattern {
+            write!(f,"pattern : {:?}", var)
+        } else {
+            write!(f,"")
+        }
+    }
 }
 
 impl ValueLimiter {

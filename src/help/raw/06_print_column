@@ -1,7 +1,11 @@
-print-column, pc <COLUMN_NAME>
-	Print a column's information
+print-column, pl <COLUMN_NAME> <MODE>{Optional}
+	Print a column's information. Modes are following
+		- simple ( default )
+		- verbose,v 
+		- debug,d
 
 	e.g)
-		pc 0
-		pc column_name
+		pl 0
+		pl column_name
+		pl col debug
 

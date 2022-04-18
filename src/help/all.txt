@@ -37,12 +37,22 @@ print, p <VIEWER COMMAND>{Optional}
 		print
 		print tidy-viewer
 
-print-column, pc <COLUMN_NAME>
+print-cell, pc <COORD: usize,column> <MODE : String>{Optional}
+	Print cell's data. There are modes for printing which are
+		- d, debug
+		- v, verbose
+	**Modes are case sensitive.**
+
+	e.g)
+		print-cell 0,count
+		pc 2,1 debug
+
+print-column, pl <COLUMN_NAME>
 	Print a column's information
 
 	e.g)
-		pc 0
-		pc column_name
+		pl 0
+		pl column_name
 
 create, c <COLUMN_NAMES>{Delimiter=space}
 	Create columns without types. Names should be separated by spaces.
@@ -60,13 +70,17 @@ add-row, ar <Index: usize>{Optional} <Row: array>{Optional,Delimiter=comma}
 		ar 5
 		ar 2 a,b,c,d,e
 
-add-column, ac <COLUMN_NAME: string> <INDEX: usize>{Optional} <TYPE: text|number>{Optional}
-	Add new column.
+add-column, ac <COLUMN_NAME: string> 
+               <INDEX: usize>{Optional} 
+			   <TYPE: text|number>{Optional}
+			   <PLACEHOLDER: String>{Optional}
+	Add new column. Placeholder should accord with given type.
 
 	e.g)
 		ac address
 		ac id 2
-		ac phone-number text
+		ac count 3 number
+		ac dead 4 text false
 
 edit, e <COORDINATE: (usize,usize)> <VALUE: string>
 	Edit a cell with given coordinate and value. Second argument can also be a
@@ -89,11 +103,11 @@ edit-row, er <INDEX: usize> <Values: Array>{Delimiter=comma}
 		er 2
 		er 3 a,b,c,d
 
-edit-row-multiple, erm <START_INDEX: usize> <END_INDEX: usize>{Optional} 
-	Edit rows from given index. Ending index is optional and will proceed to
-	final row by default.
+edit-row-multiple, erm <START_INDEX: usize>{Optional} <END_INDEX: usize>{Optional} 
+	Edit rows from given index. Start index is 0 by default and end index is row count by default.
 
 	e.g)
+		erm
 		erm 2
 		erm 2,5
 

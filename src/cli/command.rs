@@ -31,6 +31,7 @@ pub enum CommandType {
     MoveColumn,
     Exit,
     Print,
+    PrintCell,
     PrintColumn,
     Limit,
     Schema,
@@ -49,7 +50,8 @@ impl CommandType {
             "create" | "c" => Self::Create,
             "write" | "w" => Self::Write,
             "print" | "p" => Self::Print,
-            "print-column" | "pc" => Self::PrintColumn,
+            "print-cell" | "pc" => Self::PrintCell,
+            "print-column" | "pl" => Self::PrintColumn,
             "add-row" | "ar" => Self::AddRow,
             "exit" | "quit" | "q" => Self::Exit,
             "add-column" | "ac" => Self::AddColumn,
@@ -216,8 +218,9 @@ impl CommandLoop {
             | CommandType::SchemaInit
             | CommandType::SchemaExport
             | CommandType::Version
+            | CommandType::PrintCell
+            | CommandType::PrintColumn 
             | CommandType::Print => (),
-            CommandType::PrintColumn => (),
             _ => self.history.take_snapshot(&self.processor.data),
         }
 
@@ -264,6 +267,7 @@ impl Processor {
                 utils::write_to_stdout("New columns added\n")?;
             }
             CommandType::Print => self.print(&command.arguments)?,
+            CommandType::PrintCell => self.print_cell(&command.arguments)?,
             CommandType::PrintColumn => self.print_column(&command.arguments)?,
             CommandType::AddRow => self.add_row_from_args(&command.arguments)?,
             CommandType::DeleteRow => self.remove_row_from_args(&command.arguments)?,
@@ -495,7 +499,7 @@ impl Processor {
             let default = col.get_default_value();
             utils::write_to_stdout(&format!("{}~{{{}}} = ", col.name, default))?;
             let value = utils::read_stdin(true)?;
-            let value = if value.len() == 0 {
+            let value = if value.len() != 0 {
                 value
             } else {
                 default.to_string()
@@ -509,7 +513,7 @@ impl Processor {
     fn edit_row_loop(&self, row_number: usize) -> CedResult<Vec<String>> {
         let mut values = vec![];
         for (idx,col) in self.data.columns.iter().enumerate() {
-            let default = self.get_cell(row_number,idx)?.unwrap();
+            let default = self.get_cell(row_number,idx)?.ok_or(CedError::OutOfRangeError)?;
             utils::write_to_stdout(&format!("{}~{{{}}} = ", col.name, default))?;
             let value = utils::read_stdin(true)?;
             let value = if value.len() != 0 {
@@ -716,16 +720,64 @@ impl Processor {
         Ok(())
     }
 
+    fn print_cell(&self, args: &Vec<String>) -> CedResult<()> {
+        if args.len() == 0 {
+            return Err(CedError::CliError(format!(
+                "Cannot print cell without a cooridnate"
+            )));
+        }
+        let mut print_mode = "simple";
+        let coord = args[0].split(',').collect::<Vec<&str>>();
+        let (x,y) = (
+            coord[0].parse::<usize>().map_err(|_| {
+                    CedError::CliError("You need to feed usize number for coordinate".to_string())
+            })?,
+            self.data.try_get_column_index(coord[1]).ok_or(CedError::CliError("You need to appropriate column for coordinate".to_string())
+            )?
+        );
+
+        if args.len() >= 2 {
+            print_mode = &args[1];
+        }
+
+        match self.data.get_cell(x,y)? {
+            Some(cell) => {
+                match print_mode {
+                    "v" | "verbose" => utils::write_to_stdout(&format!("{:?}\n", cell))?,
+                    "d" | "debug" => {
+                        let col = self.get_column(y).ok_or(CedError::OutOfRangeError)?;
+                        utils::write_to_stdout(&format!("{:#?}\n", col))?;
+                        utils::write_to_stdout(&format!("Cell data : {:#?}\n", cell))?
+                    },
+                    _ => utils::write_to_stdout(&format!("{}\n", cell))?,
+                }
+            },
+            None => utils::write_to_stdout("No such cell\n")?,
+        }
+
+        Ok(())
+    }
+
     fn print_column(&self, args: &Vec<String>) -> CedResult<()> {
+        let mut print_mode = "simple";
         if args.len() == 0 {
             return Err(CedError::CliError(format!(
                 "Cannot print column without name"
             )));
         }
+
+        if args.len() >= 2 {
+            print_mode = &args[1];
+        }
+
         if let Some(col) = self.data.try_get_column_index(&args[0]) {
             if col < self.data.get_column_count() {
-                let col = self.get_column(col);
-                utils::write_to_stdout(&format!("{:#?}\n", col.unwrap()))?;
+                let col = self.get_column(col).ok_or(CedError::OutOfRangeError)?;
+                match print_mode {
+                    "debug"|"d" => utils::write_to_stdout(&format!("{:#?}\n", col))?,
+                    "verbose" |"v" => utils::write_to_stdout(&format!("Column = \nName: {}\nType: {}\n---\nLimiter =\n{}", col.get_name(), col.get_column_type(), col.limiter))?,
+                    _ => utils::write_to_stdout(&format!("Name: {}\nType: {}\n", col.get_name(), col.get_column_type()))?,
+                } 
                 return Ok(());
             }
         }
@@ -771,11 +823,9 @@ impl Processor {
             utils::write_to_stderr(": CSV is empty :\n")?;
             return Ok(());
         }
-        // TODO
-        // Print columns numbers
-        // Print row numbers
         let mut iterator = csv.lines().enumerate();
 
+        // 0 length csv was exited at this moment, thus safe to unwrap
         let header = iterator.next().unwrap().1;
         let header_with_number = format!(
             "-> {}\n",

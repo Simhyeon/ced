@@ -1,7 +1,7 @@
 use crate::error::{CedError, CedResult};
 use std::io::Write;
 
-pub(crate) fn write_to_stdout(src: &str) -> CedResult<()> {
+pub fn write_to_stdout(src: &str) -> CedResult<()> {
     write!(std::io::stdout(), "{}", src)
         .map_err(|err| CedError::io_error(err, "Failed to write to stdout"))?;
     std::io::stdout()
@@ -11,7 +11,7 @@ pub(crate) fn write_to_stdout(src: &str) -> CedResult<()> {
     Ok(())
 }
 
-pub(crate) fn write_to_stderr(src: &str) -> CedResult<()> {
+pub fn write_to_stderr(src: &str) -> CedResult<()> {
     write!(std::io::stderr(), "{}", src)
         .map_err(|err| CedError::io_error(err, "Failed to write to stdout"))?;
     std::io::stderr()
@@ -21,7 +21,7 @@ pub(crate) fn write_to_stderr(src: &str) -> CedResult<()> {
     Ok(())
 }
 
-pub(crate) fn read_stdin(strip_newline: bool) -> CedResult<String> {
+pub fn read_stdin(strip_newline: bool) -> CedResult<String> {
     let mut input = String::new();
     std::io::stdin()
         .read_line(&mut input)

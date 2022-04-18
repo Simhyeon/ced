@@ -1,11 +1,46 @@
 ### TODO
 
-* [ ] Test EditRow command throughly
-* [ ] Quite a handful of operations are blindly assuming that indexing doesn't fail
-Check all codes that indexs vector of hashmap and set appropriate error messages
-	- Limiter opation
-	- etc..
+- In built cli's interface should be simple and easy but also lightweight and fast.
+- No bloat: dependencies are better when smallest
+
+* [x] Make a single pass interface for cli
+	- With --no-confirm option
+	- Else always trigger confirm screen if use is satisfied with result
+	* [x] For this I need a complete argument parser.
+		- This is almost complete
+		- Test if cli arguments are passed to parser properly
+		- Make a branch where parsed flags are properly processed.
+
+* [x] Print cell + print low's print mode
+* [ ] Makefile for help is outrageous... but not the priority
+* [x] Drop thiserror
+
+* [x] Edit-rows option, maybe?
+* [x] Help with command arguments
+* [x] Add "CED\_VIEWER" variant
+* [x] Edit-row interactive
+	- With default value validation
+
+* [x] Enable limit one-line
+* [x] Fixed limit inconsistency
+* [x] Made add-column more versatile
+
+-> Sanity
+
 * [ ] Library usage ergonomic binding
+
+-> Hard
+
+* [ ] Get + Set selection api ( Consider if this is necessary, not mandate but eaiser for end users )
+* [ ] Proper undo ( No memento if possible )
+
+### NOT TODO
+
+Some great ideas but not suitable for this in-built cli interface is placed here.
+
+- Multi csv virtual table.
+- Selection 
+- Option of always print
 
 ### DONE
 

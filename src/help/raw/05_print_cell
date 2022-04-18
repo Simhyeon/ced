@@ -1,0 +1,10 @@
+print-cell, pc <COORD: usize,column> <MODE : String>{Optional}
+	Print cell's data. There are modes for printing which are
+		- d, debug
+		- v, verbose
+	**Modes are case sensitive.**
+
+	e.g)
+		print-cell 0,count
+		pc 2,1 debug
+

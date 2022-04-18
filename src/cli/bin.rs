@@ -1,40 +1,33 @@
 #[cfg(feature = "cli")]
-use ced::{Command, CommandLoop, help, CedResult};
-#[cfg(feature = "cli")]
-use std::path::PathBuf;
+use ced::{Command, CommandLoop, help, CedResult, Parser, FlagType, CommandType, utils};
 
 #[cfg(feature = "cli")]
 pub fn main() -> CedResult<()> {
     let args: Vec<String> = std::env::args().collect();
-    let mut import = None;
-
-    // Print basic command line information
-    for arg in &args[1..] {
-        if arg.starts_with("--") || arg.starts_with("-") {
-            if match_returning_flags(arg)? {
-                return Ok(());
-            }
-        } else {
-            import.replace(match_import(arg)?);
-        }
-    }
+    let flags = Parser::new().parse_from_vec(&args[1..].to_vec());
 
     // Start command loop
     let mut command_loop = CommandLoop::new();
+    let mut command_exit = false;
+    let mut write_confirm = false;
 
-    if let Some(file) = import {
-        if let Err(err) = command_loop.feed_command(&Command::from_str(&format!("import {}", file.display()))?,true) {
-            eprintln!("{}",err);
-            return Ok(());
+    for item in flags.iter() {
+        match item.ftype {
+            FlagType::Version => help::print_version(),
+            FlagType::Help => help::print_help_text(),
+            FlagType::Confirm => write_confirm = true,
+            FlagType::Argument => {
+                feed_argument_as_import(&item.option, &mut command_loop)?;
+            }
+            FlagType::Command => {
+                feed_command(&item.option, &mut command_loop, write_confirm)?;
+                command_exit = true;
+            }
+            FlagType::None => (),
         }
-    }
 
-    // TODO
-    //for arg in &args[1..] {
-        //if arg.starts_with("--") || arg.starts_with("-") {
-            //match_executing_flags(arg, &mut command_loop)?
-        //} 
-    //}
+        if item.early_exit || command_exit { return Ok(()); }
+    }
 
     command_loop
         .start_loop()
@@ -44,45 +37,36 @@ pub fn main() -> CedResult<()> {
 }
 
 #[cfg(feature = "cli")]
-/// Match arguments
-fn match_import(arg: &str) -> CedResult<PathBuf> {
-    Ok(PathBuf::from(arg))
-}
-
-/// Match flags
-///
-/// Return : if match should return early
-#[cfg(feature = "cli")]
-fn match_returning_flags(flag: &str) -> CedResult<bool> {
-    match flag {
-        "--version" | "-v" => {
-            println!("ced, 0.1.3");
-            return Ok(true);
-        }
-        "--help" | "-h" => {
-            help::print_help_text();
-            return Ok(true);
-        }
-        _ => (),
+fn feed_argument_as_import(file: &str, command_loop: &mut CommandLoop) -> CedResult<()> {
+    if let Err(err) = command_loop.feed_command(&Command::from_str(&format!("import {}", file))?,true) {
+        eprintln!("{}",err);
+        return Ok(());
     }
-    Ok(false)
+    Ok(())
 }
 
-// TODO
-///// Match flags
-/////
-///// Return : if match should return early
-//#[cfg(feature = "cli")]
-//fn match_executing_flags(flag: &str, command_loop: &mut CommandLoop) -> CedResult<()> {
-    //match flag {
-        //"--version" | "-v" => {
-            //println!("ced, 0.1.3");
-            //return Ok(true);
-        //}
-        //_ => (),
-    //}
-    //Ok(false)
-//}
+#[cfg(feature = "cli")]
+fn feed_command(command: &str, command_loop: &mut CommandLoop, write_confirm: bool) -> CedResult<()> {
+    let command_split: Vec<&str> = command.split_terminator(";").collect();
+    for command in command_split {
+        let command = Command::from_str(command)?;
+        // Write should confirm
+        if command.command_type == CommandType::Write && write_confirm {
+            command_loop.feed_command(&Command::from_str("print")?, true)?;
+            utils::write_to_stdout("Overwrite ? (y/N) : ")?;
+            if utils::read_stdin(true)?.to_lowercase().as_str() != "y" {
+                return Ok(());
+            }
+        }
+
+        if let Err(err) = command_loop.feed_command(&command,true) {
+            eprintln!("{}",err);
+            return Ok(());
+        }
+    }
+    
+    Ok(())
+}
 
 // Placeholder for binary
 #[cfg(not(feature = "cli"))]

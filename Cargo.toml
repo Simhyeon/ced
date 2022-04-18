@@ -24,4 +24,3 @@ cli = []
 
 [dependencies]
 regex = "1.5.4"
-thiserror = "1.0.25"
