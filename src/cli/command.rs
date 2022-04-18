@@ -104,12 +104,14 @@ impl Command {
 }
 
 /// Affected data container
+#[allow(dead_code)]
 enum CommandResult {
     Cell(usize,usize,Value),
     Rows(Vec<Row>),
     Columns(Vec<Column>),
 }
 
+#[allow(dead_code)]
 struct CommandRecord {
     command : Command,
     command_result : CommandResult,
