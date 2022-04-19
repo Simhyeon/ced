@@ -1,6 +1,7 @@
-schema, s <FILE>
-	Read schema file
+schema, s <FILE> <FORCE>
+	Read schema file. Second argument is whether to force update or not.
 
 	e.g)
-		s file_name_to_read
+		s file_name_to_read false
+		s new_file true
 
