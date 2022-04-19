@@ -205,7 +205,7 @@ impl VirtualData {
             // Early return if doesn't qualify a single element
             if !col.limiter.qualify(value) {
                 return Err(CedError::InvalidRowData(format!(
-                    "{} doesn't qualify {}'s limiter",
+                    "\"{}\" doesn't qualify \"{}\"'s limiter",
                     value.to_string(),
                     col.name
                 )));
@@ -250,10 +250,19 @@ impl VirtualData {
         let mut new_row = Row::new();
         if let Some(source) = source {
             self.check_row_length(source)?;
-            self.columns
+            let iter = self.columns
                 .iter()
-                .zip(source.iter())
-                .for_each(|(col, v)| new_row.insert_cell(&col.name, v.clone()));
+                .zip(source.iter());
+
+            for (col,value) in iter.clone() {
+                if !col.limiter.qualify(value) {
+                    return Err(CedError::InvalidRowData(format!(
+                                "\"{}\" doesn't qualify \"{}\"'s limiter", value, col.name
+                    )));
+                }
+            }
+
+            iter.for_each(|(col, v)| new_row.insert_cell(&col.name, v.clone()));
         } else {
             for col in &self.columns {
                 new_row.insert_cell(&col.name, col.get_default_value());
