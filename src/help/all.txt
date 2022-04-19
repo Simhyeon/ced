@@ -2,7 +2,35 @@ Ced, 0.1.4
 
 Ced is a csv editor interface.
 
-* Commands
+** Program option **
+
+NOTE
+Every options are applied procedurally. Thus preceding flags will be executed
+first.
+
+For example, --schmea file data_file => will import schema and then import the
+data_file.
+
+<FILE>
+	File to import. File is given as argument not an flag option.
+
+--version, -v
+	Print version info.
+
+--help, -h
+	Print help message
+
+--command, -c <Command String>
+	Execute given commands without entering shell mode. Each commands can be
+	separated with semi colon(;).
+
+--confirm, -c
+	Confirm when command triggered write option.
+
+--schema, -c <SCHEMA_FILE>
+	Import schema file. This sets force update by default.
+
+* Shell commands
 
 version, v
 	Print version information
@@ -165,11 +193,12 @@ limit, l
 	e.g)
 		limit 
 
-schema, s <FILE>
-	Read schema file
+schema, s <FILE> <FORCE>
+	Read schema file. Second argument is whether to force update or not.
 
 	e.g)
-		s file_name_to_read
+		s file_name_to_read false
+		s new_file true
 
 schema-export, se <FILE>
 	Export current virtual data's schema to a file
