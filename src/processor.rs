@@ -126,7 +126,15 @@ impl Processor {
         Ok(())
     }
 
-    pub fn edit_row(&mut self, row_number: usize, input: &Vec<impl AsRef<str>>) -> CedResult<()> {
+    pub fn edit_row(&mut self, row_number: usize, input: Vec<Value>) -> CedResult<()> {
+        self.data.set_row(
+            row_number,
+            input
+        )?;
+        Ok(())
+    }
+
+    pub fn edit_row_from_string(&mut self, row_number: usize, input: &Vec<impl AsRef<str>>) -> CedResult<()> {
         self.data.set_row(
             row_number,
             input.iter()
@@ -226,7 +234,7 @@ impl Processor {
 
         let mut row = content.next();
         while let Some(row_src) = row {
-            let row_args = row_src.split_whitespace().collect::<Vec<&str>>();
+            let row_args = row_src.split(',').collect::<Vec<&str>>();
             let limiter = ValueLimiter::from_line(&row_args[1..].to_vec())?;
             self.set_limiter(row_args[0], limiter, panic)?;
             row = content.next();
