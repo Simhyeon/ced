@@ -15,6 +15,21 @@ cargo install ced --features cli
 
 ### Binary usage
 
+**Ced option**
+
+```bash
+# Print version
+ced --version
+# Print help
+ced --help
+
+# Import schema and import data file.
+# Execute a given command without opening an interactive shell
+ced --schema schema.csv data.csv --command 'add-row 1 100,20;write'
+```
+
+**Ced shell command**
+
 ```bash
 # Type help in prompt or give --help flag for detailed usage.
 
@@ -33,23 +48,31 @@ ced file.csv
 >> schema ced_schema.csv
 
 # Print csv data optionally with viewer command
-# Custom viwer may not work windows platform
+# Set CED_VIEWER for default print viewer
+# Custom viwer will work for windows platform
 >> print
 >> print tidy-viwer
 
 # Append new row to last
+# Type comma to exit add loop
 >> add-row 
 First Header = .. <USER_INPUT>
 Second Header = .. <USER_INPUT>
 
-# Set limiter for a column
+# Edit a given row
+>> edit-row <ROW_NUMBER>
+
+# Set limiter for a column with interactive shell
 >> limit
+
+# Import schema file with force update
+>> schema file_name true
 
 # Export to file
 >> export file_name.csv
 
 # Overwrite to the imported file
->> write <USE_CACHE: boolean>
+>> write
 ```
 
 ### Yet to come

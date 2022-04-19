@@ -10,6 +10,7 @@
 * [x] BUG : Force update doesn't affect "empty value" although number type is set later.
 * [x] BUG : Default value for schema was not applied when only default value was given.
 * [x] Bug : Schema import was not working at all
+* [x] Bug : Add-row didn't respect something
 
 -> Hard
 * [ ] Get + Set selection api ( Consider if this is necessary, not mandate but eaiser for end users )
