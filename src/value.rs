@@ -97,6 +97,9 @@ impl ValueLimiter {
     }
 
     pub fn qualify(&self, value: &Value) -> bool {
+        if value.get_type() != self.get_type() {
+            return false;
+        }
         match value {
             Value::Number(num) => {
                 if let Some(variant) = self.variant.as_ref() {
@@ -151,6 +154,8 @@ impl ValueLimiter {
                     default,
                     Regex::new(&pattern).expect("Failed to create pattern"),
                 )?;
+            } else {
+                limiter.default = Some(default);
             }
         } else { // Default is empty
             if !pattern.is_empty() || !variants.is_empty() {
