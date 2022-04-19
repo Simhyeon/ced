@@ -17,7 +17,10 @@ pub fn main() -> CedResult<()> {
             FlagType::Help => help::print_help_text(),
             FlagType::Confirm => write_confirm = true,
             FlagType::Argument => {
-                feed_argument_as_import(&item.option, &mut command_loop)?;
+                feed_import(&item.option, &mut command_loop)?;
+            }
+            FlagType::Schema => {
+                feed_schema(&item.option, &mut command_loop)?;
             }
             FlagType::Command => {
                 feed_command(&item.option, &mut command_loop, write_confirm)?;
@@ -37,8 +40,17 @@ pub fn main() -> CedResult<()> {
 }
 
 #[cfg(feature = "cli")]
-fn feed_argument_as_import(file: &str, command_loop: &mut CommandLoop) -> CedResult<()> {
+fn feed_import(file: &str, command_loop: &mut CommandLoop) -> CedResult<()> {
     if let Err(err) = command_loop.feed_command(&Command::from_str(&format!("import {}", file))?,true) {
+        eprintln!("{}",err);
+        return Ok(());
+    }
+    Ok(())
+}
+
+#[cfg(feature = "cli")]
+fn feed_schema(file: &str, command_loop: &mut CommandLoop) -> CedResult<()> {
+    if let Err(err) = command_loop.feed_command(&Command::from_str(&format!("schema {} true", file))?,true) {
         eprintln!("{}",err);
         return Ok(());
     }

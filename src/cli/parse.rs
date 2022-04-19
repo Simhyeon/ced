@@ -57,7 +57,6 @@ impl Parser {
         // If start index is not updated ( "No word has been detected" )
         // and source's length is same with current index
         if current_index == source.len().max(1) - 1 {
-            println!("Last word : {}", &source[self.start_index..current_index + 1]);
             self.find_word_variant(&source[self.start_index..current_index + 1]);
         }
 
@@ -104,6 +103,7 @@ impl Parser {
             "--version" | "-v" => Flag::version(),
             "--help" | "-h" => Flag::help(),
             "--command" | "-c" => Flag::command(),
+            "--schema" | "-s" => Flag::schema(),
             "--confirm" | "-C" => Flag::confirm(),
             _ => Flag::empty(),
         }
@@ -133,6 +133,15 @@ impl Flag {
             ftype : FlagType::Argument,
             need_option : true,
             option: arg.to_string(),
+            early_exit: false,
+        }
+    }
+
+    pub fn schema() -> Self {
+        Self {
+            ftype : FlagType::Schema,
+            need_option : true,
+            option: String::new(),
             early_exit: false,
         }
     }
@@ -177,9 +186,10 @@ impl Flag {
 #[derive(PartialEq, Debug)]
 pub enum FlagType {
     Argument,
-    Version,
-    Help,
     Command,
     Confirm,
+    Help,
+    Schema,
+    Version,
     None,
 }

@@ -349,7 +349,6 @@ impl Processor {
     fn edit_row_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
         let len = args.len();
         let row_number: usize;
-        let values;
         match len {
             0 => { // No row
                 return Err(CedError::CliError(format!(
@@ -360,20 +359,22 @@ impl Processor {
                 row_number = args[0].parse::<usize>().map_err(|_| {
                     CedError::CliError(format!("\"{}\" is not a valid row number", args[0]))
                 })?;
-                values = self.edit_row_loop(row_number)?;
+                utils::write_to_stdout("Type comma(,) to exit input\n")?;
+                let values = self.row_construct_loop(Some(row_number))?;
+                self.edit_row(row_number, values)?;
             }
             _ => { // From 2.. row + data
                 row_number = args[0].parse::<usize>().map_err(|_| {
                     CedError::CliError(format!("\"{}\" is not a valid row number", args[0]))
                 })?;
-                values = args[1]
+                let values = args[1]
                     .split(",")
                     .map(|s| s.to_string())
-                    .collect::<Vec<String>>()
+                    .collect::<Vec<String>>();
+                self.edit_row_from_string(row_number, &values)?;
             }
         }
 
-        self.edit_row(row_number, &values)?;
         utils::write_to_stdout("Row content changed\n")?;
         Ok(())
     }
@@ -401,10 +402,11 @@ impl Processor {
             }
         }
 
+        utils::write_to_stdout("Type comma(,) to exit input\n")?;
         // Inclusive range
         for index in start_index..=end_index {
-            let values = self.edit_row_loop(index)?;
-            self.edit_row(index, &values)?;
+            let values = self.row_construct_loop(Some(index))?;
+            self.edit_row(index, values)?;
         }
 
         utils::write_to_stdout("Rows' contents changed\n")?;
@@ -458,18 +460,22 @@ impl Processor {
     fn add_row_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
         let len = args.len();
         let row_number: usize;
-        let values;
         match len {
-            0 => { // No row
+            0 => { // No row number
                 row_number = self.get_row_count();
                 if row_number > self.get_row_count() {
                     return Err(CedError::InvalidColumn(format!(
                                 "Cannot add row to out of range position : {}", row_number
                     )));
                 }
-                values = self.add_row_loop()?;
+                utils::write_to_stdout("Type comma(,) to exit input\n")?;
+                let values = self.row_construct_loop(None)?;
+                if values.len() == 0 {
+                    return Ok(());
+                }
+                self.add_row(row_number, Some(&values))?;
             }
-            1 => { // Only row
+            1 => { // Only row number
                 row_number = args[0].parse::<usize>().map_err(|_| {
                     CedError::CliError(format!("\"{}\" is not a valid row number", args[0]))
                 })?;
@@ -478,51 +484,83 @@ impl Processor {
                                 "Cannot add row to out of range position : {}", row_number
                     )));
                 }
-                values = self.add_row_loop()?;
+                utils::write_to_stdout("Type comma(,) to exit input\n")?;
+                let values = self.row_construct_loop(None)?;
+                if values.len() == 0 {
+                    return Ok(());
+                }
+                self.add_row(row_number, Some(&values))?;
             }
             _ => { // From 2.. row + data
                 row_number = args[0].parse::<usize>().map_err(|_| {
                     CedError::CliError(format!("\"{}\" is not a valid row number", args[0]))
                 })?;
-                values = args[1]
+                let values = args[1]
                     .split(",")
                     .map(|s| s.to_string())
-                    .collect::<Vec<String>>()
+                    .collect::<Vec<String>>();
+                self.add_row_from_strings(row_number, &values)?;
             }
         }
-        self.add_row_from_strings(row_number, &values)?;
         utils::write_to_stdout("New row added\n")?;
         Ok(())
     }
 
-    fn add_row_loop(&self) -> CedResult<Vec<String>> {
-        let mut values = vec![];
-        for col in &self.data.columns {
-            let default = col.get_default_value();
-            utils::write_to_stdout(&format!("{}~{{{}}} = ", col.name, default))?;
-            let value = utils::read_stdin(true)?;
-            let value = if value.len() != 0 {
-                value
-            } else {
-                default.to_string()
-            };
-
-            values.push(value);
-        }
-        Ok(values)
-    }
-
-    fn edit_row_loop(&self, row_number: usize) -> CedResult<Vec<String>> {
+    fn row_construct_loop(&mut self, row_number: Option<usize>) -> CedResult<Vec<Value>> {
         let mut values = vec![];
         for (idx,col) in self.data.columns.iter().enumerate() {
-            let default = self.get_cell(row_number,idx)?.ok_or(CedError::OutOfRangeError)?;
-            utils::write_to_stdout(&format!("{}~{{{}}} = ", col.name, default))?;
-            let value = utils::read_stdin(true)?;
-            let value = if value.len() != 0 {
-                value
+            let mut value : Value;
+            let mut type_mismatch = false;
+            let default = if let Some(row_number) = row_number {
+                self.get_cell(row_number,idx)?.ok_or(CedError::OutOfRangeError)?.to_owned()
             } else {
-                default.to_string()
+                col.get_default_value()
             };
+            utils::write_to_stdout(&format!("{}~{{{}}} = ", col.name, default))?;
+            let value_src = utils::read_stdin(true)?;
+            value = if value_src.len() != 0 {
+                match Value::from_str(&value_src, col.column_type) {
+                    Ok(value) => value,
+                    Err(_) => {
+                        type_mismatch = true;
+                        Value::empty(ValueType::Text)
+                    }
+                }
+            } else {
+                default.clone()
+            };
+
+            // Early return
+            if let Value::Text(content) = &value {
+                if content.contains(",") {
+                    return Ok(vec!());
+                }
+            }
+
+            while !col.limiter.qualify(&value) || type_mismatch {
+                type_mismatch = false;
+                utils::write_to_stdout("Given value doesn't qualify column limiter\n")?;
+                utils::write_to_stdout(&format!("{}~{{{}}} = ", col.name, default))?;
+                let value_src = utils::read_stdin(true)?;
+                value = if value_src.len() != 0 {
+                    match Value::from_str(&value_src, col.column_type) {
+                        Ok(value) => value,
+                        Err(_) => {
+                            type_mismatch = true;
+                            Value::empty(ValueType::Text)
+                        }
+                    }
+                } else {
+                    default.clone()
+                };
+
+                // Early return
+                if let Value::Text(content) = &value {
+                    if content.contains(",") {
+                        return Ok(vec!());
+                    }
+                }
+            }
 
             values.push(value);
         }
@@ -633,9 +671,10 @@ impl Processor {
                 "Insufficient variable for schema"
             )));
         }
+        let schema_file = &args[0];
         let force = &args[1];
         self.set_schema(
-            &args[0],
+            schema_file,
             !force
                 .parse::<bool>()
                 .map_err(|_| CedError::CliError(format!("{force} is not a valid value")))?,
