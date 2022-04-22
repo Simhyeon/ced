@@ -34,6 +34,7 @@ pub fn print_command_help(command: CommandType) {
         CommandType::Exit =>include_str!("../help/raw/32_quit"),
         CommandType::Print =>include_str!("../help/raw/05_print"),
         CommandType::PrintCell =>include_str!("../help/raw/05_print_cell"),
+        CommandType::PrintRow =>include_str!("../help/raw/05_print_row"),
         CommandType::PrintColumn =>include_str!("../help/raw/06_print_column"),
         CommandType::Limit =>include_str!("../help/raw/18_limit"),
         CommandType::Schema =>include_str!("../help/raw/19_schema"),
