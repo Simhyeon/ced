@@ -75,6 +75,14 @@ print-cell, pc <COORD: usize,column> <MODE : String>{Optional}
 		print-cell 0,count
 		pc 2,1 debug
 
+print-row, pr <ROW NUMBER> <VIEWER>{Optional}
+	Print a row. Viewer is optional and will use default formatting if
+	CED_VIEWER is not set.
+
+	e.g)
+		pr 0
+		pr 2 cat
+
 print-column, pl <COLUMN_NAME> <MODE>{Optional}
 	Print a column's information. Modes are following
 		- simple ( default )
