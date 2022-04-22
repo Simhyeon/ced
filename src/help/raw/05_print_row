@@ -1,0 +1,8 @@
+print-row, pr <ROW NUMBER> <VIEWER>{Optional}
+	Print a row. Viewer is optional and will use default formatting if
+	CED_VIEWER is not set.
+
+	e.g)
+		pr 0
+		pr 2 cat
+
