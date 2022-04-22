@@ -186,6 +186,47 @@ impl VirtualData {
         Ok(())
     }
 
+    /// Edit row
+    ///
+    /// Only edit row's cell when value is not none
+    pub fn edit_row(&mut self,row_number: usize, mut values: Vec<Option<Value>>) -> CedResult<()> {
+        // Row's value doesn't match length of columns
+        if values.len() != self.get_column_count() {
+            return Err(CedError::InsufficientRowData);
+        }
+        // Invalid cooridnate
+        if !self.is_valid_cell_coordinate(row_number, 0) {
+            return Err(CedError::OutOfRangeError);
+        }
+
+        let col_value_iter = self.columns.iter().zip(values.iter());
+
+        for (col, value) in col_value_iter {
+            if let Some(value) = value {
+                // Early return if doesn't qualify a single element
+                if !col.limiter.qualify(value) {
+                    return Err(CedError::InvalidRowData(format!(
+                                "\"{}\" doesn't qualify \"{}\"'s limiter",
+                                value.to_string(),
+                                col.name
+                    )));
+                }
+            }
+        }
+        let col_value_iter = self.columns.iter().zip(values.iter_mut());
+
+        // It is safe to unwrap because row_number 
+        // was validated by is_valid_cell_coordinate method.
+        let row = self.rows.get_mut(row_number).unwrap();
+        for (col, value) in col_value_iter {
+            if let Some(value) = value {
+                row.update_cell_value(&col.name, std::mem::replace(value, Value::default()))
+            }
+        }
+
+        Ok(())
+    }
+
     // TODO
     // 1. Check limiter
     // 2. Check if value exists
@@ -568,6 +609,18 @@ impl Row {
         Self {
             values: HashMap::new(),
         }
+    }
+
+    pub fn to_string(&self, columns: &Vec<Column>) -> CedResult<String> {
+        let mut acc = String::new();
+        for col in columns {
+            acc.push_str(&self.values
+                .get(&col.name)
+                .ok_or(CedError::InvalidColumn("Given column was not present thus cannot construct row string".to_string()))?.to_string());
+            acc.push(',');
+        }
+        acc.pop(); // Remove trailing comma
+        Ok(acc)
     }
 
     pub(crate) fn rename_column(&mut self, name: &str, new_name: &str) {

@@ -126,7 +126,15 @@ impl Processor {
         Ok(())
     }
 
-    pub fn edit_row(&mut self, row_number: usize, input: Vec<Value>) -> CedResult<()> {
+    pub fn edit_row(&mut self, row_number: usize, input: Vec<Option<Value>>) -> CedResult<()> {
+        self.data.edit_row(
+            row_number,
+            input
+        )?;
+        Ok(())
+    }
+
+    pub fn set_row(&mut self, row_number: usize, input: Vec<Value>) -> CedResult<()> {
         self.data.set_row(
             row_number,
             input
@@ -134,7 +142,7 @@ impl Processor {
         Ok(())
     }
 
-    pub fn edit_row_from_string(&mut self, row_number: usize, input: &Vec<impl AsRef<str>>) -> CedResult<()> {
+    pub fn set_row_from_string(&mut self, row_number: usize, input: &Vec<impl AsRef<str>>) -> CedResult<()> {
         self.data.set_row(
             row_number,
             input.iter()
