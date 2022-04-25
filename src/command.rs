@@ -2,10 +2,12 @@ use crate::utils::{self,subprocess};
 use crate::error::{CedError, CedResult};
 use crate::processor::Processor;
 use crate::value::ValueType;
-use crate::virtual_data::{VirtualData, SCHEMA_HEADER, Row, Column};
+use crate::virtual_data::{SCHEMA_HEADER, Row, Column};
 use crate::{ValueLimiter, Value};
 #[cfg(feature = "cli")]
 use crate::cli::help;
+#[cfg(feature = "cli")]
+use crate::virtual_data::VirtualData;
 use std::io::Write;
 use std::{ops::Sub, path::Path};
 
@@ -29,6 +31,7 @@ pub enum CommandType {
     EditColumn,
     RenameColumn,
     EditRow,
+    #[cfg(feature = "cli")]
     EditRowMultiple,
     MoveRow,
     MoveColumn,
@@ -66,6 +69,7 @@ impl CommandType {
             "delete-column" | "dc" => Self::DeleteColumn,
             "edit" | "edit-cell" | "e" => Self::EditCell,
             "edit-row" | "er" => Self::EditRow,
+            #[cfg(feature = "cli")]
             "edit-row-multiple" | "erm" => Self::EditRowMultiple,
             "edit-column" | "ec" => Self::EditColumn,
             "rename-column" | "rc" => Self::RenameColumn,
@@ -125,7 +129,9 @@ struct CommandRecord {
 }
 
 // Default history capacity double word
+#[cfg(feature = "cli")]
 const HISTORY_CAPACITY: usize = 16;
+#[cfg(feature = "cli")]
 pub struct CommandHistory {
     // TODO
     // Preserved for command pattern
@@ -134,7 +140,8 @@ pub struct CommandHistory {
     redo_history: Vec<VirtualData>,
     history_capacity: usize,
 }
-
+            
+#[cfg(feature = "cli")]
 impl CommandHistory {
     pub fn new() -> Self {
         let capacity = if let Ok(cap) = std::env::var("CED_HISTORY_CAPACITY") {
@@ -203,6 +210,7 @@ impl Processor {
             CommandType::AddColumn => self.add_column_from_args(&command.arguments)?,
             CommandType::EditCell => self.edit_cell_from_args(&command.arguments)?,
             CommandType::EditRow => self.edit_row_from_args(&command.arguments)?,
+            #[cfg(feature = "cli")]
             CommandType::EditRowMultiple => self.edit_rows_from_args(&command.arguments)?,
             CommandType::EditColumn => self.edit_column_from_args(&command.arguments)?,
             CommandType::RenameColumn => self.rename_column_from_args(&command.arguments)?,
@@ -281,6 +289,7 @@ impl Processor {
                             "Insufficient arguments for edit-row"
                 )));
             }
+            #[cfg(feature = "cli")]
             1 => { // Only row
                 row_number = args[0].parse::<usize>().map_err(|_| {
                     CedError::CommandError(format!("\"{}\" is not a valid row number", args[0]))
@@ -308,7 +317,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Multiple rows
+    /// Edit multiple rows
+    #[cfg(feature = "cli")]
     fn edit_rows_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
         let len = args.len();
         let mut start_index = 0;
@@ -399,6 +409,7 @@ impl Processor {
         let len = args.len();
         let row_number: usize;
         match len {
+            #[cfg(feature = "cli")]
             0 => { // No row number
                 row_number = self.get_row_count();
                 if row_number > self.get_row_count() {
@@ -413,6 +424,7 @@ impl Processor {
                 }
                 self.add_row(row_number, Some(&values))?;
             }
+            #[cfg(feature = "cli")]
             1 => { // Only row number
                 row_number = args[0].parse::<usize>().map_err(|_| {
                     CedError::CommandError(format!("\"{}\" is not a valid row number", args[0]))
@@ -444,6 +456,7 @@ impl Processor {
         Ok(())
     }
 
+    #[cfg(feature = "cli")]
     fn add_row_loop(&mut self, row_number: Option<usize>) -> CedResult<Vec<Value>> {
         let mut values = vec![];
         for (idx,col) in self.data.columns.iter().enumerate() {
@@ -506,6 +519,7 @@ impl Processor {
     }
 
     // None means value should not change 
+    #[cfg(feature = "cli")]
     fn edit_row_loop(&mut self, row_number: Option<usize>) -> CedResult<Vec<Option<Value>>> {
         let mut values = vec![];
         for (idx,col) in self.data.columns.iter().enumerate() {
