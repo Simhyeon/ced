@@ -24,6 +24,12 @@
 * [x] Organize mod structure -> Only expose what is necessary
 
 * [x] Extract command to global feature
+* [x] Windows compatible subprocess ( Ced Viewer )
+* [x] Now arguments are order-insensitive
+* [x] Disable log output
+* [x] Disable loop variant for non cli build
+* [ ] Automatic build tests
+* [ ] Print with numbers lines with bigger number has strange artifact, which has low priority but yeah anyway
 
 -> Hard
 

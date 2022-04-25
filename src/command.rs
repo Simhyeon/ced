@@ -313,7 +313,7 @@ impl Processor {
             }
         }
 
-        self.log(&format!("Row \"{}\"'s' content changed\n", row_number))?;
+        self.log(&format!("Row \"{}\" 's content changed\n", row_number))?;
         Ok(())
     }
 
@@ -401,7 +401,7 @@ impl Processor {
             )))?;
 
         self.edit_cell(row, column, &value)?;
-        self.log(&format!("Cell \"({},{})\" content changed \"{}\"\n", row,coord[1],&&value))?;
+        self.log(&format!("Cell \"({},{})\" content changed to \"{}\"\n", row,coord[1],&&value))?;
         Ok(())
     }
 

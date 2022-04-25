@@ -1,12 +1,5 @@
 ** Program option **
 
-NOTE
-Every options are applied procedurally. Thus preceding flags will be executed
-first.
-
-For example, --schmea file data_file => will import schema and then import the
-data_file.
-
 <FILE>
 	File to import. File is given as argument not an flag option.
 
@@ -20,9 +13,11 @@ data_file.
 	Execute given commands without entering shell mode. Each commands can be
 	separated with semi colon(;).
 
---confirm, -c
+--confirm, -C
 	Confirm when command triggered write option.
 
---schema, -c <SCHEMA_FILE>
+--schema, -s <SCHEMA_FILE>
 	Import schema file. This sets force update by default.
 
+--nolog, -n
+	Do not print logs
