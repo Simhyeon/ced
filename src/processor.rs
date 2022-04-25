@@ -17,6 +17,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::error::{CedError, CedResult};
+use crate::utils;
 use crate::value::{Value, ValueLimiter, ValueType};
 use crate::virtual_data::{Column, Row, VirtualData};
 
@@ -29,6 +30,7 @@ const ALPHABET: [&str; 26] = [
 pub struct Processor {
     pub(crate) file: Option<PathBuf>,
     pub(crate) data: VirtualData,
+    pub(crate) print_logs: bool,
 }
 
 impl Processor {
@@ -36,7 +38,15 @@ impl Processor {
         Self {
             file: None,
             data: VirtualData::new(),
+            print_logs: true,
         }
+    }
+
+    pub(crate) fn log(&self, log: &str) -> CedResult<()> {
+        if self.print_logs {
+            utils::write_to_stdout(log)?;
+        }
+        Ok(())
     }
 
     pub fn import_from_string(&mut self, text: impl AsRef<str>, has_header: bool) -> CedResult<()> {
@@ -103,9 +113,9 @@ impl Processor {
     /// Overwrite virtual data's content into imported file
     ///
     /// * cache - whether to backup original file's content into temp directory
-    pub fn overwrite_to_file(&self, cache: bool) -> CedResult<()> {
+    pub fn overwrite_to_file(&self, cache: bool) -> CedResult<bool> {
         if let None = self.file {
-            return Ok(());
+            return Ok(true);
         }
 
         let file = self.file.as_ref().unwrap();
@@ -117,7 +127,7 @@ impl Processor {
         }
         std::fs::write(file, csv.as_bytes())
             .map_err(|err| CedError::io_error(err, "Failed to overwrite file with content"))?;
-        Ok(())
+        Ok(false)
     }
 
     pub fn edit_cell(&mut self, x: usize, y: usize, input: &str) -> CedResult<()> {
