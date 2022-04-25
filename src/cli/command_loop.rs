@@ -10,6 +10,9 @@ pub fn start_main_loop() -> CedResult<()> {
     let mut command_loop = CommandLoop::new();
     let mut command_exit = false;
     let mut write_confirm = false;
+    let mut import = None;
+    let mut schema = None;
+    let mut command = None;
 
     for item in flags.iter() {
         match item.ftype {
@@ -17,19 +20,36 @@ pub fn start_main_loop() -> CedResult<()> {
             FlagType::Help => help::print_help_text(),
             FlagType::Confirm => write_confirm = true,
             FlagType::Argument => {
-                feed_import(&item.option, &mut command_loop)?;
+                import.replace(item.option.clone());
             }
             FlagType::Schema => {
-                feed_schema(&item.option, &mut command_loop)?;
+                schema.replace(item.option.clone());
             }
             FlagType::Command => {
-                feed_command(&item.option, &mut command_loop, write_confirm)?;
+                command.replace(item.option.clone());
                 command_exit = true;
+            }
+            FlagType::NoLog => {
+                command_loop.no_log();
             }
             FlagType::None => (),
         }
 
-        if item.early_exit || command_exit { return Ok(()); }
+        if item.early_exit { return Ok(()); }
+    }
+
+    if let Some(import) = import.as_ref() {
+        feed_import(import, &mut command_loop)?;
+    }
+    if let Some(sch) = schema.as_ref() {
+        feed_schema(sch, &mut command_loop)?;
+    }
+    if let Some(cmd) = command.as_ref() {
+        feed_command(cmd, &mut command_loop, write_confirm)?;
+    }
+
+    if command_exit {
+        return Ok(());
     }
 
     command_loop
@@ -89,6 +109,10 @@ impl CommandLoop {
             history: CommandHistory::new(),
             processor: Processor::new(),
         }
+    }
+
+    pub fn no_log(&mut self) {
+        self.processor.print_logs = false;
     }
 
     pub fn feed_command(&mut self, command: &Command, panic: bool) -> CedResult<()> {
