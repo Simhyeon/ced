@@ -67,6 +67,7 @@ impl Parser {
             "--command" | "-c" => Flag::command(),
             "--schema" | "-s" => Flag::schema(),
             "--confirm" | "-C" => Flag::confirm(),
+            "--nolog" | "-n" => Flag::nolog(),
             _ => Flag::empty(),
         }
     }
@@ -126,6 +127,15 @@ impl Flag {
         }
     }
 
+    pub fn nolog() -> Self {
+        Self {
+            ftype : FlagType::NoLog,
+            need_option : false,
+            option: String::new(),
+            early_exit: false,
+        }
+    }
+
     pub fn version() -> Self {
         Self {
             ftype: FlagType::Version,
@@ -153,5 +163,6 @@ pub enum FlagType {
     Help,
     Schema,
     Version,
+    NoLog,
     None,
 }
