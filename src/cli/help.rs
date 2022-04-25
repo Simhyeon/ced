@@ -1,4 +1,5 @@
-use super::{utils, command::CommandType};
+use crate::utils;
+use crate::CommandType;
 
 const HELP_TEXT: &'static str = include_str!("../help/all.txt");
 

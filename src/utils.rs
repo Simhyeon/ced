@@ -3,7 +3,9 @@ use std::ffi::OsStr;
 use std::io::Write;
 use std::process::Stdio;
 
+#[allow(unused_variables)]
 pub fn write_to_stdout(src: &str) -> CedResult<()> {
+    #[cfg(not(test))]
     write!(std::io::stdout(), "{}", src)
         .map_err(|err| CedError::io_error(err, "Failed to write to stdout"))?;
     std::io::stdout()
@@ -13,7 +15,9 @@ pub fn write_to_stdout(src: &str) -> CedResult<()> {
     Ok(())
 }
 
-pub fn write_to_stderr(src: &str) -> CedResult<()> {
+#[allow(unused_variables)]
+pub(crate) fn write_to_stderr(src: &str) -> CedResult<()> {
+    #[cfg(not(test))]
     write!(std::io::stderr(), "{}", src)
         .map_err(|err| CedError::io_error(err, "Failed to write to stdout"))?;
     std::io::stderr()
@@ -23,7 +27,7 @@ pub fn write_to_stderr(src: &str) -> CedResult<()> {
     Ok(())
 }
 
-pub fn read_stdin(strip_newline: bool) -> CedResult<String> {
+pub(crate) fn read_stdin(strip_newline: bool) -> CedResult<String> {
     let mut input = String::new();
     std::io::stdin()
         .read_line(&mut input)
@@ -34,18 +38,18 @@ pub fn read_stdin(strip_newline: bool) -> CedResult<String> {
     Ok(input)
 }
 
-pub fn subprocess(args: &Vec<impl AsRef<OsStr>>, process_standard_input: Option<String>) -> CedResult<()> {
+pub(crate) fn subprocess(args: &Vec<impl AsRef<OsStr>>, process_standard_input: Option<String>) -> CedResult<()> {
     let mut process = std::process::Command::new(&args[0])
         .args(&args[1..])
         .stdin(Stdio::piped())
         .spawn()
         .map_err(|_| {
-            CedError::CliError(format!("Failed to execute command : \"{:?}\"", &args[0].as_ref()))
+            CedError::CommandError(format!("Failed to execute command : \"{:?}\"", &args[0].as_ref()))
         })?;
     let mut stdin = process
         .stdin
         .take()
-        .ok_or(CedError::CliError("Failed to read from stdin".to_string()))?;
+        .ok_or(CedError::CommandError("Failed to read from stdin".to_string()))?;
 
     if let Some(input) = process_standard_input {
         std::thread::spawn(move || {
@@ -57,7 +61,7 @@ pub fn subprocess(args: &Vec<impl AsRef<OsStr>>, process_standard_input: Option<
 
     let output = process
         .wait_with_output()
-        .map_err(|_| CedError::CliError("Failed to write to stdout".to_string()))?;
+        .map_err(|_| CedError::CommandError("Failed to write to stdout".to_string()))?;
     let out_content = String::from_utf8_lossy(&output.stdout);
     let err_content = String::from_utf8_lossy(&output.stderr);
 

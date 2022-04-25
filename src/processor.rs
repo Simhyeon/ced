@@ -39,14 +39,8 @@ impl Processor {
         }
     }
 
-    pub fn import_from_file(&mut self, path: impl AsRef<Path>, has_header: bool) -> CedResult<()> {
-        let content = std::fs::read_to_string(&path).map_err(|err| {
-            CedError::io_error(
-                err,
-                &format!("Failed to import file \"{}\"", path.as_ref().display()),
-            )
-        })?;
-        let mut content = content.lines();
+    pub fn import_from_string(&mut self, text: impl AsRef<str>, has_header: bool) -> CedResult<()> {
+        let mut content = text.as_ref().lines();
 
         let mut row_count = 1;
         if has_header {
@@ -82,6 +76,17 @@ impl Processor {
             row = content.next();
             row_count += 1;
         }
+        Ok(())
+    }
+
+    pub fn import_from_file(&mut self, path: impl AsRef<Path>, has_header: bool) -> CedResult<()> {
+        let content = std::fs::read_to_string(&path).map_err(|err| {
+            CedError::io_error(
+                err,
+                &format!("Failed to import file \"{}\"", path.as_ref().display()),
+            )
+        })?;
+        self.import_from_string(content, has_header)?;
         self.file.replace(path.as_ref().to_owned());
         Ok(())
     }

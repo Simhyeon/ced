@@ -1,9 +1,7 @@
+/// Argument parser
 pub struct Parser {
     flags: Vec<Flag>,
     accept_flag_option: bool,
-    start_index: usize,
-    comma: bool,
-    escaped : bool,
 }
 
 impl Parser {
@@ -11,12 +9,10 @@ impl Parser {
         Self {
             flags : vec![],
             accept_flag_option: false,
-            start_index : 0,
-            comma : false,
-            escaped : false,
         }
     }
 
+    #[allow(dead_code)]
     pub fn clear(&mut self) {
         *self = Self::new();
     }
@@ -26,40 +22,6 @@ impl Parser {
             let should_break = self.find_word_variant(item.as_ref());
             if should_break {return std::mem::replace(&mut self.flags, vec![]);}
         }
-        std::mem::replace(&mut self.flags, vec![])
-    }
-
-    pub fn parse_from_raw(&mut self, source : &str) -> Vec<Flag> {
-        self.clear();
-        let mut current_index = 0;
-        for (idx,ch) in source.trim().chars().enumerate() {
-            match ch {
-                '\\' => self.escaped = true,
-                '\'' => if self.escaped { 
-                    self.escaped = false 
-                } else {
-                    self.comma = !self.comma
-                },
-                ' ' => {
-                    if self.comma { continue; }
-                    let should_break = self.find_word_variant(&source[self.start_index..idx]);
-                    if should_break {
-                        return std::mem::replace(&mut self.flags, vec![]);
-                    }
-                    self.start_index = idx;
-                } , // End of word
-                _ => ()
-            }
-            current_index = idx;
-            // End of socket
-        }
-
-        // If start index is not updated ( "No word has been detected" )
-        // and source's length is same with current index
-        if current_index == source.len().max(1) - 1 {
-            self.find_word_variant(&source[self.start_index..current_index + 1]);
-        }
-
         std::mem::replace(&mut self.flags, vec![])
     }
 

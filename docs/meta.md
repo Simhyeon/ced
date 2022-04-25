@@ -10,11 +10,26 @@
 * [x] BUG : Force update doesn't affect "empty value" although number type is set later.
 * [x] BUG : Default value for schema was not applied when only default value was given.
 * [x] Bug : Schema import was not working at all
-* [x] Bug : Add-row didn't respect something
+* [x] Bug : Add-row didn't respect something -> What? something?
+
+* [x] Performance improvement
+	* [x] Remove clone calls if possible
+	* [x] Separate set and edit so that edit can prevent allocation if possible.
+		* [x] On number text you cannot escape with comma character because it
+		is detected as type mismatch 
+		* [x] Current implementation of while != None is completely broken fix this.
+* [x] Added column numbers for printing
+* [x] Print row command
+* [x] Enable user to specify ced history capacity, so that user can also disable history
+* [x] Organize mod structure -> Only expose what is necessary
+
+* [x] Extract command to global feature
 
 -> Hard
+
 * [ ] Get + Set selection api ( Consider if this is necessary, not mandate but eaiser for end users )
-* [ ] Proper undo ( No memento if possible )
+* [ ] Make test script -> Ok... this is quite cumbersome
+* [ ] Command based undo mechanic
 
 ### NOT TODO
 

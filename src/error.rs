@@ -10,8 +10,7 @@ pub enum CedError {
     InvalidRowData(String),
     InvalidColumn(String),
     InvalidCellData(String),
-    #[cfg(feature = "cli")]
-    CliError(String),
+    CommandError(String),
 }
 
 impl std::fmt::Display for CedError {
@@ -25,8 +24,7 @@ impl std::fmt::Display for CedError {
             Self::InvalidRowData(txt) => write!(f,"ERR : Invalid row data =\n{0}",txt),
             Self::InvalidColumn(txt) => write!(f,"ERR : Invalid column =\n{0}",txt),
             Self::InvalidCellData(txt) => write!(f,"ERR : Invalid cell data =\n{0}",txt),
-            #[cfg(feature = "cli")]
-            Self::CliError(txt) => write!(f,"ERR : Command line error =\n{0}",txt),
+            Self::CommandError(txt) => write!(f,"ERR : Invalid command call =\n{0}",txt),
         }
     }
 } 
