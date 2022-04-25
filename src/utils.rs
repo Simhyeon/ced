@@ -39,13 +39,25 @@ pub(crate) fn read_stdin(strip_newline: bool) -> CedResult<String> {
 }
 
 pub(crate) fn subprocess(args: &Vec<impl AsRef<OsStr>>, process_standard_input: Option<String>) -> CedResult<()> {
-    let mut process = std::process::Command::new(&args[0])
-        .args(&args[1..])
+    #[cfg(target_os = "windows")]
+    let mut process = std::process::Command::new("cmd")
+        .arg("/C")
+        .args(&args[0..])
         .stdin(Stdio::piped())
         .spawn()
         .map_err(|_| {
             CedError::CommandError(format!("Failed to execute command : \"{:?}\"", &args[0].as_ref()))
         })?;
+    #[cfg(not(target_os = "windows"))]
+    let mut process = std::process::Command::new("sh")
+        .arg("-c")
+        .args(&args[0..])
+        .stdin(Stdio::piped())
+        .spawn()
+        .map_err(|_| {
+            CedError::CommandError(format!("Failed to execute command : \"{:?}\"", &args[0].as_ref()))
+        })?;
+
     let mut stdin = process
         .stdin
         .take()
