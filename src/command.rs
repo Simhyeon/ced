@@ -191,7 +191,7 @@ impl Processor {
             CommandType::Write => self.overwrite_to_file_from_args(&command.arguments)?,
             CommandType::Create => {
                 self.add_column_array(&command.arguments)?;
-                utils::write_to_stdout("New columns added\n")?;
+                self.log("New columns added\n")?;
             }
             CommandType::Print => self.print(&command.arguments)?,
             CommandType::PrintCell => self.print_cell(&command.arguments)?,
@@ -227,7 +227,7 @@ impl Processor {
             CedError::CommandError(format!("\"{}\" is not a valid row number", args[1]))
         })?;
         self.move_row(src_number, target_number)?;
-        utils::write_to_stdout("Row moved\n")?;
+        self.log(&format!("Row moved from \"{}\" to \"{}\"\n", src_number, target_number))?;
         Ok(())
     }
 
@@ -252,7 +252,7 @@ impl Processor {
                     args[1]
                 )))?;
         self.move_column(src_number, target_number)?;
-        utils::write_to_stdout("Column moved\n")?;
+        self.log(&format!("Column moved from \"{}\" to \"{}\"\n", src_number, target_number))?;
         Ok(())
     }
 
@@ -267,7 +267,7 @@ impl Processor {
         let new_name = &args[1];
 
         self.rename_column(&column, &new_name)?;
-        utils::write_to_stdout("Column renamed\n")?;
+        self.log(&format!("Column renamed from \"{}\" to \"{}\"\n", column, new_name))?;
         Ok(())
     }
 
@@ -304,7 +304,7 @@ impl Processor {
             }
         }
 
-        utils::write_to_stdout("Row content changed\n")?;
+        self.log(&format!("Row \"{}\"'s' content changed\n", row_number))?;
         Ok(())
     }
 
@@ -347,7 +347,7 @@ impl Processor {
             self.edit_row(index, values)?;
         }
 
-        utils::write_to_stdout("Rows' contents changed\n")?;
+        self.log(&format!("Rows {}~{} contents changed\n", start_index, end_index))?;
         Ok(())
     }
 
@@ -362,7 +362,7 @@ impl Processor {
         let new_value = &args[1];
 
         self.edit_column(column, new_value)?;
-        utils::write_to_stdout("Column content changed\n")?;
+        self.log(&format!("Column \"{}\" content changed to \"{}\"\n", column, new_value))?;
         Ok(())
     }
 
@@ -391,7 +391,7 @@ impl Processor {
             )))?;
 
         self.edit_cell(row, column, &value)?;
-        utils::write_to_stdout("Cell content changed\n")?;
+        self.log(&format!("Cell \"({},{})\" content changed \"{}\"\n", row,coord[1],&&value))?;
         Ok(())
     }
 
@@ -440,7 +440,7 @@ impl Processor {
                 self.add_row_from_strings(row_number, &values)?;
             }
         }
-        utils::write_to_stdout("New row added\n")?;
+        self.log(&format!("New row added to \"{}\"\n", row_number))?;
         Ok(())
     }
 
@@ -600,7 +600,7 @@ impl Processor {
         }
 
         self.add_column(column_number, column_name, column_type, None, placeholder)?;
-        utils::write_to_stdout("New column added\n")?;
+        self.log(&format!("New column \"{}\" added to \"{}\"\n", column_name, column_number))?;
         Ok(())
     }
 
@@ -615,9 +615,9 @@ impl Processor {
         .sub(1);
 
         if let None = self.remove_row(row_count) {
-            utils::write_to_stderr("No such row to remove\n")?;
+            utils::write_to_stdout("No such row to remove\n")?;
         }
-        utils::write_to_stdout("A row removed\n")?;
+        self.log(&format!("A row removed from \"{}\"\n", row_count))?;
         Ok(())
     }
 
@@ -631,7 +631,7 @@ impl Processor {
         };
 
         self.remove_column(column_count)?;
-        utils::write_to_stdout("A column removed\n")?;
+        self.log(&format!("A column \"{}\" removed\n", &args[0]))?;
         Ok(())
     }
 
@@ -667,7 +667,7 @@ impl Processor {
                 })?,
             )?,
         }
-        utils::write_to_stdout("File imported\n")?;
+        self.log(&format!("File \"{}\" imported\n", &args[0]))?;
         Ok(())
     }
 
@@ -685,8 +685,8 @@ impl Processor {
                 .parse::<bool>()
                 .map_err(|_| CedError::CommandError(format!("{force} is not a valid value")))?,
         )?;
-        utils::write_to_stdout("Schema applied\n")?;
-        Ok(())
+        self.log(&format!("Schema \"{}\" applied\n", &args[0]))?;
+        Ok(() )
     }
 
     fn export_schema_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
@@ -702,7 +702,7 @@ impl Processor {
         file.write_all(self.export_schema().as_bytes())
             .map_err(|err| CedError::io_error(err, "Failed to write schema to a file"))?;
 
-        utils::write_to_stdout("Schema exported\n")?;
+        self.log(&format!("Schema exported to \"{}\"\n",args[0]))?;
         Ok(())
     }
 
@@ -718,7 +718,7 @@ impl Processor {
         file.write_all(SCHEMA_HEADER.as_bytes())
             .map_err(|err| CedError::io_error(err, "Failed to write schema to a file"))?;
 
-        utils::write_to_stdout("Schema initiated\n")?;
+        self.log(&format!("Schema initiated to \"{}\"\n", file_name))?;
         Ok(())
     }
 
@@ -727,7 +727,7 @@ impl Processor {
             return Err(CedError::CommandError(format!("Export requires file path")));
         }
         self.write_to_file(&args[0])?;
-        utils::write_to_stdout("File exported\n")?;
+        self.log(&format!("File exported to \"{}\"\n", &args[0]))?;
         Ok(())
     }
 
@@ -740,8 +740,8 @@ impl Processor {
         } else {
             cache = true;
         }
-        self.overwrite_to_file(cache)?;
-        utils::write_to_stdout("File overwritten\n")?;
+        let success = self.overwrite_to_file(cache)?;
+        if success {self.log(&format!("File overwritten to \"{}\"\n", self.file.as_ref().unwrap().display()))?;}
         Ok(())
     }
 
@@ -865,7 +865,7 @@ impl Processor {
     fn print_with_numbers(&mut self, csv: &str) -> CedResult<()> {
         // Empty csv value, return early
         if csv.len() == 0 {
-            utils::write_to_stderr(": CSV is empty :\n")?;
+            utils::write_to_stdout(": CSV is empty :\n")?;
             return Ok(());
         }
         let mut iterator = csv.lines().enumerate();
@@ -918,6 +918,7 @@ impl Processor {
             };
             let limiter = ValueLimiter::from_line(&source[1..5].to_vec())?;
             self.set_limiter(&col, limiter, !force)?;
+            self.log(&format!("Limited column \"{}\"", col))?;
         }
         Ok(())
     }
