@@ -4,30 +4,7 @@
 - No bloat: dependencies are better when smallest
 * [ ] Library usage ergonomic binding
 
-* [x] Value check on input rather than input on row based.
-	- On loop, if value doesn't fit it should ask you to input again.
-* [x] Exit from loop + comma should be escaped for sanity reason
-* [x] BUG : Force update doesn't affect "empty value" although number type is set later.
-* [x] BUG : Default value for schema was not applied when only default value was given.
-* [x] Bug : Schema import was not working at all
-* [x] Bug : Add-row didn't respect something -> What? something?
-
-* [x] Performance improvement
-	* [x] Remove clone calls if possible
-	* [x] Separate set and edit so that edit can prevent allocation if possible.
-		* [x] On number text you cannot escape with comma character because it
-		is detected as type mismatch 
-		* [x] Current implementation of while != None is completely broken fix this.
-* [x] Added column numbers for printing
-* [x] Print row command
-* [x] Enable user to specify ced history capacity, so that user can also disable history
-* [x] Organize mod structure -> Only expose what is necessary
-
-* [x] Extract command to global feature
-* [x] Windows compatible subprocess ( Ced Viewer )
-* [x] Now arguments are order-insensitive
-* [x] Disable log output
-* [x] Disable loop variant for non cli build
+* [x] Document CED_HISTORY_CAPACITY
 * [ ] Automatic build tests
 * [ ] Print with numbers lines with bigger number has strange artifact, which has low priority but yeah anyway
 
@@ -91,3 +68,27 @@ Make it swappable so that command pattern can be used later.
 * [x] Fixed limit inconsistency
 * [x] Made add-column more versatile
 
+* [x] Value check on input rather than input on row based.
+	- On loop, if value doesn't fit it should ask you to input again.
+* [x] Exit from loop + comma should be escaped for sanity reason
+* [x] BUG : Force update doesn't affect "empty value" although number type is set later.
+* [x] BUG : Default value for schema was not applied when only default value was given.
+* [x] Bug : Schema import was not working at all
+* [x] Bug : Add-row didn't respect something -> What? something?
+
+* [x] Performance improvement
+	* [x] Remove clone calls if possible
+	* [x] Separate set and edit so that edit can prevent allocation if possible.
+		* [x] On number text you cannot escape with comma character because it
+		is detected as type mismatch 
+		* [x] Current implementation of while != None is completely broken fix this.
+* [x] Added column numbers for printing
+* [x] Print row command
+* [x] Enable user to specify ced history capacity, so that user can also disable history
+* [x] Organize mod structure -> Only expose what is necessary
+
+* [x] Extract command to global feature
+* [x] Windows compatible subprocess ( Ced Viewer )
+* [x] Now arguments are order-insensitive
+* [x] Disable log output
+* [x] Disable loop variant for non cli build

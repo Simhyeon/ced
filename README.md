@@ -73,6 +73,14 @@ Second Header = .. <USER_INPUT>
 
 # Overwrite to the imported file
 >> write
+
+# Undo previous operation
+# History capacity is 16 by default
+# You can override it with CED_HISTORY_CAPACITY
+>> undo
+
+# Redo previous undo
+>> redo
 ```
 
 ### Yet to come
