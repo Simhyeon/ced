@@ -8,6 +8,8 @@ pub fn start_main_loop() -> CedResult<()> {
 
     // Start command loop
     let mut command_loop = CommandLoop::new();
+
+    // Set temporary variables
     let mut command_exit = false;
     let mut write_confirm = false;
     let mut import = None;
@@ -16,8 +18,8 @@ pub fn start_main_loop() -> CedResult<()> {
 
     for item in flags.iter() {
         match item.ftype {
-            FlagType::Version => help::print_version(),
-            FlagType::Help => help::print_help_text(),
+            FlagType::Version => command_loop.print_version()?,
+            FlagType::Help => command_loop.print_version()?,
             FlagType::Confirm => write_confirm = true,
             FlagType::Argument => {
                 import.replace(item.option.clone());
@@ -97,13 +99,26 @@ fn feed_command(command: &str, command_loop: &mut CommandLoop, write_confirm: bo
     Ok(())
 }
 
-
 pub struct CommandLoop {
     history: CommandHistory,
     processor: Processor,
 }
 
+impl Processor {
+    pub(crate) fn print_help(&self) -> CedResult<()> {
+        help::print_help_text();
+        Ok(())
+    }
+    pub(crate) fn print_version(&self) -> CedResult<()> {
+        help::print_version();
+        Ok(())
+    }
+}
+
 impl CommandLoop {
+    // TODO
+    // Should also add preset by default in command_loop or should it be default behaviour of
+    // processor?
     pub fn new() -> Self {
         Self {
             history: CommandHistory::new(),
@@ -170,7 +185,7 @@ impl CommandLoop {
             CommandType::Help
             | CommandType::Version => (),
 
-            _ => self.history.take_snapshot(&self.processor.data),
+            _ => self.history.take_snapshot(self.processor.get_page_data()?),
         }
 
         if let Err(err) = self.processor.execute_command(&command) {
@@ -185,15 +200,36 @@ impl CommandLoop {
 
     fn undo(&mut self) -> CedResult<()> {
         if let Some(prev) = self.history.pop() {
-            self.processor.data = prev.clone();
+            *self.processor.get_page_data_mut()? = prev.clone();
         }
         Ok(())
     }
 
     fn redo(&mut self) -> CedResult<()> {
         if let Some(prev) = self.history.pull_redo() {
-            self.processor.data = prev;
+            *self.processor.get_page_data_mut()? = prev;
         }
+        Ok(())
+    }
+
+    //
+    // Wrapper methods
+    // 
+
+    // TODO
+    fn import_help_as_page(&mut self) -> CedResult<()> {
+        unimplemented!("Not yet");
+        Ok(())
+    }
+
+    pub(crate) fn print_help(&mut self) -> CedResult<()> {
+        self.import_help_as_page()?;
+        self.processor.print_help()?;
+        Ok(())
+    }
+    pub(crate) fn print_version(&mut self) -> CedResult<()> {
+        self.import_help_as_page()?;
+        self.processor.print_version()?;
         Ok(())
     }
 }
