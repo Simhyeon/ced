@@ -1,6 +1,7 @@
-limit, l
-	Set limiter for column with interactive prompt
+limit, l <Attributes: Array>{Optional}
+	Set limiter for column with interactive prompt. You can directly pass
+	limiter attributes if you want.
 
 	e.g)
 		limit 
-
+		limit column,type,default,variant,pattern
