@@ -33,11 +33,17 @@ pub fn print_command_help(command: CommandType) {
         CommandType::MoveRow => include_str!("../help/raw/16_move"),
         CommandType::MoveColumn =>include_str!("../help/raw/17_move_column"),
         CommandType::Exit =>include_str!("../help/raw/32_quit"),
+        // TODO
+        // Unimplemented!
+        CommandType::Execute =>include_str!("../help/raw/32_quit"),
         CommandType::Print =>include_str!("../help/raw/05_print"),
         CommandType::PrintCell =>include_str!("../help/raw/05_print_cell"),
         CommandType::PrintRow =>include_str!("../help/raw/05_print_row"),
         CommandType::PrintColumn =>include_str!("../help/raw/06_print_column"),
         CommandType::Limit =>include_str!("../help/raw/18_limit"),
+        // TODO
+        // Unimplemented!
+        CommandType::LimitPreset => include_str!("../help/raw/18_limit"),
         CommandType::Schema =>include_str!("../help/raw/19_schema"),
         CommandType::SchemaInit =>include_str!("../help/raw/21_schema_init"),
         CommandType::SchemaExport =>include_str!("../help/raw/20_schema_export"),
