@@ -36,11 +36,13 @@ pub enum CommandType {
     MoveRow,
     MoveColumn,
     Exit,
+    Execute,
     Print,
     PrintCell,
     PrintRow,
     PrintColumn,
     Limit,
+    LimitPreset,
     Schema,
     SchemaInit,
     SchemaExport,
@@ -56,6 +58,7 @@ impl CommandType {
             "help" | "h" => Self::Help,
             "import" | "i" => Self::Import,
             "export" | "x" => Self::Export,
+            "execute" | "ex" => Self::Execute,
             "create" | "c" => Self::Create,
             "write" | "w" => Self::Write,
             "print" | "p" => Self::Print,
@@ -76,6 +79,7 @@ impl CommandType {
             "move-row" | "move" | "m" => Self::MoveRow,
             "move-column" | "mc" => Self::MoveColumn,
             "limit" | "l" => Self::Limit,
+            "limit-preset" | "lp" => Self::LimitPreset,
             "undo" | "u" => Self::Undo,
             "redo" | "r" => Self::Redo,
             "schema" | "s" => Self::Schema,
@@ -217,6 +221,7 @@ impl Processor {
             CommandType::MoveRow => self.move_row_from_args(&command.arguments)?,
             CommandType::MoveColumn => self.move_column_from_args(&command.arguments)?,
             CommandType::Limit => self.limit_column_from_args(&command.arguments)?,
+            CommandType::LimitPreset => self.limit_preset(&command.arguments)?,
             _ => (),
         }
         Ok(())
@@ -246,14 +251,14 @@ impl Processor {
             )));
         }
         let src_number =
-            self.data
+            self.get_page_data()?
                 .try_get_column_index(&args[0])
                 .ok_or(CedError::InvalidColumn(format!(
                     "Column : \"{}\" is not valid",
                     args[0]
                 )))?;
         let target_number =
-            self.data
+            self.get_page_data()?
                 .try_get_column_index(&args[1])
                 .ok_or(CedError::InvalidColumn(format!(
                     "Column : \"{}\" is not valid",
@@ -322,7 +327,7 @@ impl Processor {
     fn edit_rows_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
         let len = args.len();
         let mut start_index = 0;
-        let mut end_index = self.get_row_count().max(1) - 1;
+        let mut end_index = self.get_row_count()?.max(1) - 1;
         match len {
             // No row
             0 => { }
@@ -393,7 +398,7 @@ impl Processor {
             CedError::CommandError(format!("\"{}\" is not a valid row number", coord[0]))
         })?;
         let column = self
-            .data
+            .get_page_data()?
             .try_get_column_index(coord[1])
             .ok_or(CedError::InvalidColumn(format!(
                 "Column : \"{}\" is not valid",
@@ -411,8 +416,8 @@ impl Processor {
         match len {
             #[cfg(feature = "cli")]
             0 => { // No row number
-                row_number = self.get_row_count();
-                if row_number > self.get_row_count() {
+                row_number = self.get_row_count()?;
+                if row_number > self.get_row_count()? {
                     return Err(CedError::InvalidColumn(format!(
                                 "Cannot add row to out of range position : {}", row_number
                     )));
@@ -429,7 +434,7 @@ impl Processor {
                 row_number = args[0].parse::<usize>().map_err(|_| {
                     CedError::CommandError(format!("\"{}\" is not a valid row number", args[0]))
                 })?;
-                if row_number > self.get_row_count() {
+                if row_number > self.get_row_count()? {
                     return Err(CedError::InvalidColumn(format!(
                                 "Cannot add row to out of range position : {}", row_number
                     )));
@@ -459,7 +464,7 @@ impl Processor {
     #[cfg(feature = "cli")]
     fn add_row_loop(&mut self, row_number: Option<usize>) -> CedResult<Vec<Value>> {
         let mut values = vec![];
-        for (idx,col) in self.data.columns.iter().enumerate() {
+        for (idx,col) in self.get_page_data()?.columns.iter().enumerate() {
             let mut value : Value;
             let mut type_mismatch = false;
             let default = if let Some(row_number) = row_number {
@@ -522,7 +527,7 @@ impl Processor {
     #[cfg(feature = "cli")]
     fn edit_row_loop(&mut self, row_number: Option<usize>) -> CedResult<Vec<Option<Value>>> {
         let mut values = vec![];
-        for (idx,col) in self.data.columns.iter().enumerate() {
+        for (idx,col) in self.get_page_data()?.columns.iter().enumerate() {
             let mut value : Option<Value>;
             let mut type_mismatch = false;
             let default = if let Some(row_number) = row_number {
@@ -588,7 +593,7 @@ impl Processor {
 
     fn add_column_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
         let column_name;
-        let mut column_number = self.data.get_column_count();
+        let mut column_number = self.get_page_data()?.get_column_count();
         let mut column_type = ValueType::Text;
         let mut placeholder = None;
 
@@ -620,7 +625,7 @@ impl Processor {
 
     fn remove_row_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
         let row_count = if args.len() == 0 {
-            self.get_row_count()
+            self.get_row_count()?
         } else {
             args[0]
                 .parse::<usize>()
@@ -628,7 +633,7 @@ impl Processor {
         }
         .sub(1);
 
-        if let None = self.remove_row(row_count) {
+        if let None = self.remove_row(row_count)? {
             utils::write_to_stdout("No such row to remove\n")?;
         }
         self.log(&format!("A row removed from \"{}\"\n", row_count))?;
@@ -637,9 +642,9 @@ impl Processor {
 
     fn remove_column_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
         let column_count = if args.len() == 0 {
-            self.data.get_column_count()
+            self.get_page_data()?.get_column_count()
         } else {
-            self.data
+            self.get_page_data()?
                 .try_get_column_index(&args[0])
                 .ok_or(CedError::InvalidColumn(format!("")))?
         };
@@ -713,7 +718,7 @@ impl Processor {
         let mut file = std::fs::File::create(file)
             .map_err(|err| CedError::io_error(err, "Failed to open file for schema write"))?;
 
-        file.write_all(self.export_schema().as_bytes())
+        file.write_all(self.export_schema()?.as_bytes())
             .map_err(|err| CedError::io_error(err, "Failed to write schema to a file"))?;
 
         self.log(&format!("Schema exported to \"{}\"\n",args[0]))?;
@@ -761,7 +766,7 @@ impl Processor {
 
     // Combine ths with viewer variant
     fn print(&mut self, args: &Vec<String>) -> CedResult<()> {
-        let csv = self.data.to_string();
+        let csv = self.get_data_as_text()?;
         let mut viewer = vec![];
         // Use given command 
         // or use environment variable
@@ -793,7 +798,7 @@ impl Processor {
             coord[0].parse::<usize>().map_err(|_| {
                     CedError::CommandError("You need to feed usize number for coordinate".to_string())
             })?,
-            self.data.try_get_column_index(coord[1]).ok_or(CedError::CommandError("You need to appropriate column for coordinate".to_string())
+            self.get_page_data()?.try_get_column_index(coord[1]).ok_or(CedError::CommandError("You need to appropriate column for coordinate".to_string())
             )?
         );
 
@@ -801,12 +806,12 @@ impl Processor {
             print_mode = &args[1];
         }
 
-        match self.data.get_cell(x,y)? {
+        match self.get_page_data()?.get_cell(x,y)? {
             Some(cell) => {
                 match print_mode {
                     "v" | "verbose" => utils::write_to_stdout(&format!("{:?}\n", cell))?,
                     "d" | "debug" => {
-                        let col = self.get_column(y).ok_or(CedError::OutOfRangeError)?;
+                        let col = self.get_column(y)?.ok_or(CedError::OutOfRangeError)?;
                         utils::write_to_stdout(&format!("{:#?}\n", col))?;
                         utils::write_to_stdout(&format!("Cell data : {:#?}\n", cell))?
                     },
@@ -825,12 +830,12 @@ impl Processor {
         }
         let row = self.get_row(args[0].parse::<usize>().map_err(|_| {
             CedError::CommandError("You need to valid number as row number".to_string())
-        })?);
+        })?)?;
 
         if let None = row {
             return Err(CedError::CommandError(format!("Print-row needs row number")));
         }
-        let row = row.unwrap().to_string(&self.data.columns)? + "\n";
+        let row = row.unwrap().to_string(&self.get_page_data()?.columns)? + "\n";
 
         let mut viewer = vec![];
         // Use given command 
@@ -857,9 +862,9 @@ impl Processor {
             print_mode = &args[1];
         }
 
-        if let Some(col) = self.data.try_get_column_index(&args[0]) {
-            if col < self.data.get_column_count() {
-                let col = self.get_column(col).ok_or(CedError::OutOfRangeError)?;
+        if let Some(col) = self.get_page_data()?.try_get_column_index(&args[0]) {
+            if col < self.get_page_data()?.get_column_count() {
+                let col = self.get_column(col)?.ok_or(CedError::OutOfRangeError)?;
                 match print_mode {
                     "debug"|"d" => utils::write_to_stdout(&format!("{:#?}\n", col))?,
                     "verbose" |"v" => utils::write_to_stdout(&format!("Column = \nName: {}\nType: {}\n---\nLimiter =\n{}", col.get_name(), col.get_column_type(), col.limiter))?,
@@ -893,7 +898,7 @@ impl Processor {
                 .enumerate()
                 .map(|(i, h)| format!("[{}]-{}", i, h))
                 .collect::<Vec<String>>()
-                .join(",")
+                .join("")
         );
         utils::write_to_stdout(&header_with_number)?;
 
@@ -904,7 +909,7 @@ impl Processor {
                 .enumerate()
                 .map(|(i, h)| format!("[{}]-{}", i, h))
                 .collect::<Vec<String>>()
-                .join(",");
+                .join("");
             utils::write_to_stdout(&format!("{} | {}\n", index - 1, numbered_line))?;
         }
         Ok(())
@@ -934,6 +939,21 @@ impl Processor {
             self.set_limiter(&col, limiter, !force)?;
             self.log(&format!("Limited column \"{}\"", col))?;
         }
+        Ok(())
+    }
+
+    // TODO
+    pub fn limit_preset(&mut self, args: &Vec<String>) -> CedResult<()> {
+        if args.len() < 1 {
+            return Err(CedError::CommandError(format!(
+                        "Limit argument needs column_name,type,default,variant,pattern,force(bool)"
+            )));
+        } 
+        let preset_name = &args[0];
+
+        // TODO
+        // Retreive value from preset
+
         Ok(())
     }
 
