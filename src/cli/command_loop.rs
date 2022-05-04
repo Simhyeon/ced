@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use crate::{Command, Processor, utils, CedResult , cli::help};
 use crate::cli::parse::{FlagType, Parser};
 use crate::command::{CommandHistory, CommandType};
@@ -27,6 +29,7 @@ pub fn start_main_loop() -> CedResult<()> {
             FlagType::Schema => {
                 schema.replace(item.option.clone());
             }
+            // Get stdin if given option is empty
             FlagType::Command => {
                 command.replace(item.option.clone());
                 command_exit = true;
@@ -39,6 +42,10 @@ pub fn start_main_loop() -> CedResult<()> {
 
         if item.early_exit { return Ok(()); }
     }
+
+    // TODO
+    // Add empty page
+    command_loop.add_empty_page()?;
 
     if let Some(import) = import.as_ref() {
         feed_import(import, &mut command_loop)?;
@@ -139,13 +146,15 @@ impl CommandLoop {
     pub fn start_loop(&mut self) -> CedResult<()> {
         let mut command = Command::default();
         utils::write_to_stdout("Ced, a csv editor\n")?;
-        while CommandType::Exit != command.command_type {
+        let mut read_byte = 1;
+        while read_byte != 0 && CommandType::Exit != command.command_type {
             utils::write_to_stdout(">> ")?;
-            let input = &utils::read_stdin(true)?;
+            let mut input = String::new();
+            read_byte = utils::read_stdin_until_eof(true, &mut input)?;
             if input.is_empty() {
                 continue;
             }
-            command = Command::from_str(input)?;
+            command = Command::from_str(&input)?;
             self.execute_command(&command, false)?;
         }
         Ok(())
@@ -172,7 +181,7 @@ impl CommandLoop {
             | CommandType::Export
             | CommandType::Create
             | CommandType::Write
-            | CommandType::None
+            | CommandType::None(_)
             | CommandType::Schema
             | CommandType::SchemaInit
             | CommandType::SchemaExport
@@ -209,6 +218,11 @@ impl CommandLoop {
         if let Some(prev) = self.history.pull_redo() {
             *self.processor.get_page_data_mut()? = prev;
         }
+        Ok(())
+    }
+
+    fn add_empty_page(&mut self) -> CedResult<()> {
+        self.processor.add_page("\\EMPTY", "",false)?;
         Ok(())
     }
 
