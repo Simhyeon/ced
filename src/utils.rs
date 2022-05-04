@@ -3,6 +3,8 @@ use std::ffi::OsStr;
 use std::io::Write;
 use std::process::Stdio;
 
+pub(crate) const DEFAULT_DELIMITER: &str = ",";
+
 #[allow(unused_variables)]
 pub fn write_to_stdout(src: &str) -> CedResult<()> {
     #[cfg(not(test))]
@@ -27,12 +29,22 @@ pub(crate) fn write_to_stderr(src: &str) -> CedResult<()> {
     Ok(())
 }
 
+pub(crate) fn read_stdin_until_eof(strip_newline: bool, input: &mut String) -> CedResult<usize> {
+    let read_byte = std::io::stdin()
+        .read_line(input)
+        .map_err(|err| CedError::io_error(err, "Failed to read stdin from source"))?;
+    if strip_newline && input.ends_with("\n") {
+        input.pop();
+    }
+    Ok(read_byte)
+}
+
 pub(crate) fn read_stdin(strip_newline: bool) -> CedResult<String> {
     let mut input = String::new();
     std::io::stdin()
         .read_line(&mut input)
         .map_err(|err| CedError::io_error(err, "Failed to read stdin from source"))?;
-    if strip_newline {
+    if strip_newline && input.ends_with("\n") {
         input.pop();
     }
     Ok(input)
@@ -84,4 +96,43 @@ pub(crate) fn subprocess(args: &Vec<impl AsRef<OsStr>>, process_standard_input: 
         write_to_stderr(&err_content)?;
     }
     Ok(())
+}
+
+/// Strip double quotes from csv value
+///
+/// This will return None if given value doesn't qualify with csv spec
+pub(crate) fn is_valid_csv(value : &str) -> bool {
+    let mut on_quote = false;
+    let mut previous = ' ';
+    let mut iter = value.chars().peekable();
+    while let Some(ch) = iter.next() {
+        match ch {
+            '"' => {
+                // Add literal double quote if previous was same character
+                if previous == '"' {
+                    previous = ' '; // Reset previous
+                } else { // Start quote
+                    if let Some('"') = iter.peek() { }
+                    else {
+                        on_quote = !on_quote;
+                    }
+                    previous = ch;
+                }
+            },
+            ',' => {
+                // This is unallowed in csv spec
+                if !on_quote {
+                    return false;
+                } else {
+
+                }
+            },
+            _ => previous = ch,
+        }
+    }
+    if on_quote {
+        false
+    } else {
+        true
+    }
 }
