@@ -99,7 +99,8 @@ impl Processor {
 
     /// Try get page data but panic if cursor is empty
     ///
-    /// This method assumes cursor is set and valid.
+    /// This method assumes cursor is set and valid but you can set extra argument to return empty
+    /// data set.
     ///
     /// This return data's mutable reference as result
     pub(crate) fn get_page_data(&self) -> CedResult<&VirtualData> {
@@ -416,16 +417,19 @@ impl Processor {
         let mut on_quote = false;
         let mut previous = ' ';
         let mut chunk = String::new();
-        for ch in line.chars() {
+        let mut iter = line.chars().peekable();
+        while let Some(ch) = iter.next() {
             match ch {
                 '"' => {
                     // Add literal double quote if previous was same character
                     if previous == '"' {
                         previous = ' '; // Reset previous
                     } else {
-                        on_quote = !on_quote;
+                        if let Some('"') = iter.peek() { }
+                        else {
+                            on_quote = !on_quote;
+                        }
                         previous = ch;
-                        continue;                    
                     }
                 },
                 ',' => {
@@ -443,4 +447,10 @@ impl Processor {
         split.push(chunk);
         split
     }
+}
+
+pub enum QuoteState {
+    None,
+    Start,
+    End,
 }
