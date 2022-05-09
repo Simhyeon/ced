@@ -94,7 +94,7 @@ impl Flag {
     pub fn argument(arg: &str) -> Self {
         Self {
             ftype : FlagType::Argument,
-            need_option : true,
+            need_option : false,
             option: arg.to_string(),
             early_exit: false,
         }
