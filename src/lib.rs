@@ -11,8 +11,6 @@ pub(crate) mod utils;
 
 pub(crate) mod error;
 pub(crate) mod processor;
-pub(crate) mod value;
-pub(crate) mod virtual_data;
 
 // ----------
 // RE-EXPORTS
@@ -21,5 +19,4 @@ pub(crate) mod virtual_data;
 pub use cli::command_loop::start_main_loop;
 pub use error::{CedError, CedResult};
 pub use processor::Processor;
-pub use value::{Value, ValueLimiter, ValueType};
 pub use command::{Command, CommandType};
