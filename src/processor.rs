@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 /// Processor is a main struct for csv editing.
 ///
 /// * Usage
@@ -19,20 +18,20 @@ use std::path::{Path, PathBuf};
 
 use crate::error::{CedError, CedResult};
 use crate::utils;
-use crate::value::{Value, ValueLimiter, ValueType};
-use crate::virtual_data::{Column, Row, VirtualData};
-
-const ALPHABET: [&str; 26] = [
-    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s",
-    "t", "u", "v", "w", "x", "y", "z",
-];
+use dcsv::{Value, ValueLimiter, ValueType};
+use dcsv::{Column, Row, VirtualData};
+#[cfg(feature = "cli")]
+use crate::cli::preset::Preset;
+use std::collections::HashMap;
 
 /// Csv processor
 pub struct Processor {
     pub(crate) file: Option<PathBuf>,
-    pages: HashMap<String,VirtualData>,
+    pub(crate) pages: HashMap<String,VirtualData>,
     pub(crate) cursor: Option<String>,
     pub(crate) print_logs: bool,
+    #[cfg(feature = "cli")]
+    preset: Preset,
 }
 
 impl Processor {
@@ -42,6 +41,8 @@ impl Processor {
             pages: HashMap::new(),
             cursor : None,
             print_logs: true,
+            #[cfg(feature = "cli")]
+            preset: Preset::empty(),
         }
     }
 
@@ -68,11 +69,10 @@ impl Processor {
             )) 
         } else {
             // TODO
-            self.pages.insert(page.to_owned(), VirtualData::new());
+            let csv_data = dcsv::Reader::new().has_header(has_header).read_from_stream(data.as_bytes())?;
+            self.pages.insert(page.to_owned(), csv_data);
             self.cursor = Some(page.to_owned());
-            // IMPORTANT
-            // This should come later because import is applied to current **CURSOR** page
-            self.import_from_string(data, has_header)
+            Ok(())
         }
     }
 
@@ -110,46 +110,6 @@ impl Processor {
     pub(crate) fn log(&self, log: &str) -> CedResult<()> {
         if self.print_logs {
             utils::write_to_stdout(log)?;
-        }
-        Ok(())
-    }
-
-    pub fn import_from_string(&mut self, text: impl AsRef<str>, has_header: bool) -> CedResult<()> {
-        let mut content = text.as_ref().lines();
-
-        let mut row_count = 1;
-        if has_header {
-            let header = content.next();
-            if let None = header {
-                return Err(CedError::InvalidRowData(format!(
-                    "Given data does not have a header"
-                )));
-            }
-            self.add_column_array(&header.unwrap().split(',').collect::<Vec<_>>())?;
-        }
-
-        let mut row = content.next();
-        while let Some(row_src) = row {
-            let split = Self::split_csv_row(&row_src);
-
-            // No column data
-            if self.get_page_data_mut()?.columns.len() == 0 {
-                self.add_column_array(&self.make_arbitrary_column(split.len()))?;
-                continue;
-            }
-
-            // Given row data has different length with column
-            if split.len() != self.get_page_data_mut()?.get_column_count() {
-                self.get_page_data_mut()?.drop();
-                return Err(CedError::InvalidRowData(format!(
-                    "Row of line \"{}\" has different length.",
-                    row_count + 1
-                )));
-            }
-
-            self.add_row_from_strings(self.get_row_count()?, &split)?;
-            row = content.next();
-            row_count += 1;
         }
         Ok(())
     }
@@ -323,9 +283,9 @@ impl Processor {
 
         let mut row = content.next();
         while let Some(row_src) = row {
-            let row_args = row_src.split(',').collect::<Vec<&str>>();
+            let row_args = dcsv::utils::csv_row_to_vector(row_src, None);
             let limiter = ValueLimiter::from_line(&row_args[1..].to_vec())?;
-            self.set_limiter(row_args[0], limiter, panic)?;
+            self.set_limiter(&row_args[0], &limiter, panic)?;
             row = content.next();
         }
         Ok(())
@@ -334,7 +294,7 @@ impl Processor {
     pub fn set_limiter(
         &mut self,
         column: &str,
-        limiter: ValueLimiter,
+        limiter: &ValueLimiter,
         panic: bool,
     ) -> CedResult<()> {
         let column = self
@@ -344,7 +304,24 @@ impl Processor {
                 "{} is not a valid column",
                 column
             )))?;
-        self.get_page_data_mut()?.set_limiter(column, limiter, panic)?;
+        self.get_page_data_mut()?.set_limiter(column, &limiter, panic)?;
+        Ok(())
+    }
+
+    // <PRESETS>
+    //
+    #[cfg(feature = "cli")]
+    pub(crate) fn configure_preset(&mut self, use_defualt: bool) -> CedResult<()> {
+        self.preset = Preset::new(use_defualt)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "cli")]
+    pub(crate) fn set_limiter_from_preset(&mut self,column: &str, preset_name: &str, panic: bool) -> CedResult<()> {
+        let preset = self.preset.get(preset_name).cloned();
+        if let Some(limiter) = preset {
+            self.set_limiter(column, &limiter, panic)?;
+        }
         Ok(())
     }
 
@@ -373,7 +350,7 @@ impl Processor {
     }
 
     pub fn get_cell(&self, row: usize, column: usize) -> CedResult<Option<&Value>> {
-        self.get_page_data()?.get_cell(row, column)
+        Ok(self.get_page_data()?.get_cell(row, column)?)
     }
 
     pub fn get_row(&self, index: usize) -> CedResult<Option<&Row>> {
@@ -391,66 +368,4 @@ impl Processor {
     pub fn get_column(&self, index: usize) -> CedResult<Option<&Column>> {
         Ok(self.get_page_data()?.columns.get(index))
     }
-    // </MISC>
-
-    // <DRY>
-    /// This creates arbritrary column name which is unique for computer
-    ///
-    /// Name starts with alphabetical order and lengthend sequentially
-    ///
-    /// e.g.)
-    /// a,b,c ... aa,bb,cc ... aaa,bbb,ccc
-    fn make_arbitrary_column(&self, size: usize) -> Vec<String> {
-        let mut column_names: Vec<String> = vec![];
-        for index in 0..size {
-            let index = index + 1;
-            let target = ALPHABET[index % ALPHABET.len() - 1];
-            let name = target.repeat(index / ALPHABET.len() + 1);
-            column_names.push(name);
-        }
-        column_names
-    }
-
-    // </DRY>
-    fn split_csv_row(line: &str) -> Vec<String> {
-        let mut split = vec![];
-        let mut on_quote = false;
-        let mut previous = ' ';
-        let mut chunk = String::new();
-        let mut iter = line.chars().peekable();
-        while let Some(ch) = iter.next() {
-            match ch {
-                '"' => {
-                    // Add literal double quote if previous was same character
-                    if previous == '"' {
-                        previous = ' '; // Reset previous
-                    } else {
-                        if let Some('"') = iter.peek() { }
-                        else {
-                            on_quote = !on_quote;
-                        }
-                        previous = ch;
-                    }
-                },
-                ',' => {
-                    if !on_quote {
-                        let flushed = std::mem::replace(&mut chunk, String::new());
-                        split.push(flushed);
-                        previous = ch;
-                        continue;
-                    }
-                },
-                _ => previous = ch,
-            }
-            chunk.push(ch);
-        }
-        split.push(chunk);
-        split
-    }
-}
-
-pub enum QuoteState {
-    None,
-    Start,
-    End,
 }
