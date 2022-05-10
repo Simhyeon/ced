@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use crate::{Command, Processor, utils, CedResult , cli::help};
 use crate::cli::parse::{FlagType, Parser};
 use crate::command::{CommandHistory, CommandType};
@@ -7,7 +5,6 @@ use crate::command::{CommandHistory, CommandType};
 pub fn start_main_loop() -> CedResult<()> {
     let args: Vec<String> = std::env::args().collect();
     let flags = Parser::new().parse_from_vec(&args[1..].to_vec());
-
     // Start command loop
     let mut command_loop = CommandLoop::new();
 
@@ -20,19 +17,29 @@ pub fn start_main_loop() -> CedResult<()> {
 
     for item in flags.iter() {
         match item.ftype {
-            FlagType::Version => command_loop.print_version()?,
-            FlagType::Help => command_loop.print_version()?,
+            FlagType::Version => help::print_version(),
+            FlagType::Help => help::print_help_text(),
             FlagType::Confirm => write_confirm = true,
             FlagType::Argument => {
-                import.replace(item.option.clone());
+                if !item.option.is_empty() {
+                    import.replace(item.option.clone());
+                }
             }
             FlagType::Schema => {
-                schema.replace(item.option.clone());
+                if !item.option.is_empty() {
+                    schema.replace(item.option.clone());
+                } else {
+                    utils::write_to_stderr("WRN : Schema is empty thus not applied\n")?;
+                }
             }
             // Get stdin if given option is empty
             FlagType::Command => {
-                command.replace(item.option.clone());
-                command_exit = true;
+                if !item.option.is_empty() {
+                    command.replace(item.option.clone());
+                    command_exit = true;
+                } else {
+                    utils::write_to_stderr("WRN : Command is empty thus not executed\n")?;
+                }
             }
             FlagType::NoLog => {
                 command_loop.no_log();
@@ -43,9 +50,11 @@ pub fn start_main_loop() -> CedResult<()> {
         if item.early_exit { return Ok(()); }
     }
 
-    // TODO
     // Add empty page
     command_loop.add_empty_page()?;
+
+    // Add preset
+    command_loop.processor.configure_preset(true)?;
 
     if let Some(import) = import.as_ref() {
         feed_import(import, &mut command_loop)?;
@@ -111,21 +120,7 @@ pub struct CommandLoop {
     processor: Processor,
 }
 
-impl Processor {
-    pub(crate) fn print_help(&self) -> CedResult<()> {
-        help::print_help_text();
-        Ok(())
-    }
-    pub(crate) fn print_version(&self) -> CedResult<()> {
-        help::print_version();
-        Ok(())
-    }
-}
-
 impl CommandLoop {
-    // TODO
-    // Should also add preset by default in command_loop or should it be default behaviour of
-    // processor?
     pub fn new() -> Self {
         Self {
             history: CommandHistory::new(),
@@ -143,7 +138,7 @@ impl CommandLoop {
     }
 
     /// Start a loop until exit
-    pub fn start_loop(&mut self) -> CedResult<()> {
+    fn start_loop(&mut self) -> CedResult<()> {
         let mut command = Command::default();
         utils::write_to_stdout("Ced, a csv editor\n")?;
         let mut read_byte = 1;
@@ -223,27 +218,6 @@ impl CommandLoop {
 
     fn add_empty_page(&mut self) -> CedResult<()> {
         self.processor.add_page("\\EMPTY", "",false)?;
-        Ok(())
-    }
-
-    //
-    // Wrapper methods
-    // 
-
-    // TODO
-    fn import_help_as_page(&mut self) -> CedResult<()> {
-        unimplemented!("Not yet");
-        Ok(())
-    }
-
-    pub(crate) fn print_help(&mut self) -> CedResult<()> {
-        self.import_help_as_page()?;
-        self.processor.print_help()?;
-        Ok(())
-    }
-    pub(crate) fn print_version(&mut self) -> CedResult<()> {
-        self.import_help_as_page()?;
-        self.processor.print_version()?;
         Ok(())
     }
 }
