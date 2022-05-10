@@ -1,14 +1,13 @@
 use crate::utils::{self,subprocess};
 use crate::error::{CedError, CedResult};
 use crate::processor::Processor;
-use crate::value::ValueType;
-use crate::virtual_data::{SCHEMA_HEADER, Row, Column};
-use crate::{ValueLimiter, Value};
+use dcsv::{Value,ValueType, ValueLimiter};
+use dcsv::{SCHEMA_HEADER, Row, Column};
 use utils::DEFAULT_DELIMITER;
 #[cfg(feature = "cli")]
 use crate::cli::help;
 #[cfg(feature = "cli")]
-use crate::virtual_data::VirtualData;
+use dcsv::VirtualData;
 use std::io::Write;
 use std::{ops::Sub, path::Path};
 
@@ -43,6 +42,7 @@ pub enum CommandType {
     PrintRow,
     PrintColumn,
     Limit,
+    #[cfg(feature = "cli")]
     LimitPreset,
     Schema,
     SchemaInit,
@@ -80,6 +80,7 @@ impl CommandType {
             "move-row" | "move" | "m" => Self::MoveRow,
             "move-column" | "mc" => Self::MoveColumn,
             "limit" | "l" => Self::Limit,
+            #[cfg(feature = "cli")]
             "limit-preset" | "lp" => Self::LimitPreset,
             "undo" | "u" => Self::Undo,
             "redo" | "r" => Self::Redo,
@@ -222,6 +223,7 @@ impl Processor {
             CommandType::MoveRow => self.move_row_from_args(&command.arguments)?,
             CommandType::MoveColumn => self.move_column_from_args(&command.arguments)?,
             CommandType::Limit => self.limit_column_from_args(&command.arguments)?,
+            #[cfg(feature = "cli")]
             CommandType::LimitPreset => self.limit_preset(&command.arguments)?,
             CommandType::Execute => self.execute_from_file(&command.arguments)?,
             // NOTE
@@ -833,6 +835,11 @@ impl Processor {
         }
         let mut print_mode = "simple";
         let coord = args[0].split(',').collect::<Vec<&str>>();
+        if coord.len() < 2 {
+            return Err(CedError::CommandError(format!(
+                "\"{}\' is not a valid cell coordinate", args[0]
+            )));
+        }
         let (x,y) = (
             coord[0].parse::<usize>().map_err(|_| {
                     CedError::CommandError("You need to feed usize number for coordinate".to_string())
@@ -953,41 +960,32 @@ impl Processor {
         if args.len() == 0 {
             self.add_limiter_prompt()?;
         } else {
-            let source = args[0..].to_vec().join(" ").split(DEFAULT_DELIMITER).map(|s| s.to_string()).collect::<Vec<_>>();
-            if source.len() < 6 {
-                return Err(CedError::CommandError(format!(
-                            "Limit argument needs column_name,type,default,variant,pattern,force(bool)"
-                )));
-            }
+            let column_name = &args[0];
+            let source = args[1..].to_vec().join(" ");
+            let limiter = ValueLimiter::from_line(&dcsv::utils::csv_row_to_vector(&source, None))?;
 
-            let col = &source[0];
-            let force_str = &source[5];
-            let force = if force_str.is_empty() {
-                true
-            } else {
-                force_str.parse::<bool>().map_err(|_| {
-                    CedError::CommandError("You need to feed boolean value for update".to_string())
-                })?
-            };
-            let limiter = ValueLimiter::from_line(&source[1..5].to_vec())?;
-            self.set_limiter(&col, limiter, !force)?;
-            self.log(&format!("Limited column \"{}\"", col))?;
+            self.set_limiter(column_name, &limiter, true)?;
+            self.log(&format!("Limited column \"{}\"", column_name))?;
         }
         Ok(())
     }
 
-    // TODO
+    #[cfg(feature = "cli")]
     pub fn limit_preset(&mut self, args: &Vec<String>) -> CedResult<()> {
-        if args.len() < 1 {
+        if args.len() < 2 {
             return Err(CedError::CommandError(format!(
-                        "Limit argument needs column_name,type,default,variant,pattern,force(bool)"
+                        "Limit-preset needs column and preset_name"
             )));
         } 
-        let preset_name = &args[0];
-
-        // TODO
-        // Retreive value from preset
-
+        let column = &args[0];
+        let preset_name = &args[1];
+        let mut panic = true;
+        if args.len() >= 3 {
+            panic = !args[2].parse::<bool>().map_err(|_| {
+                CedError::CommandError("You need to feed boolean value for the force value".to_string())
+            })?;
+        }
+        self.set_limiter_from_preset(column, preset_name, panic)?;
         Ok(())
     }
 
@@ -1048,7 +1046,7 @@ impl Processor {
         };
 
         let limiter = ValueLimiter::from_line(&limiter_attributes)?;
-        self.set_limiter(&column, limiter, !force)?;
+        self.set_limiter(&column, &limiter, !force)?;
         Ok(())
     }
 }
