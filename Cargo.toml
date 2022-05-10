@@ -24,3 +24,4 @@ cli = []
 
 [dependencies]
 regex = "1.5.4"
+dcsv = "0.1.0"
