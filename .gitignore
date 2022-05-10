@@ -2,3 +2,5 @@
 Cargo.lock
 test.csv
 schema.csv
+preset.csv
+backup

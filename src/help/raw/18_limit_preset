@@ -1,0 +1,19 @@
+limit-preset, lp <Column: Any> <Preset Name: String>
+	Set limiter from preset. You can define presets in $HOME/.ced_preset.csv or
+	%APPDATA%/.ced_preset.csv
+
+	Format of preset file is same with schema file but first value is
+	preset_name instead of column_name.
+
+	There are built-in presets which are 
+		- text
+		- number
+		- float
+		- email
+		- date
+		- time
+		- url
+
+	e.g)
+		limit-preset column email 
+		lp column url

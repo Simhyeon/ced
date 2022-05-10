@@ -190,12 +190,34 @@ move-column, mc <Original: any> <TARGET: usize>
 		mc 0 5
 		mc count 2
 
-limit, l
-	Set limiter for column with interactive prompt
+limit, l <Attributes: Array>{Optional}
+	Set limiter for column with interactive prompt. You can directly pass
+	limiter attributes if you want.
+
+	This operation override default value if row value doesn't satisfy limiter.
 
 	e.g)
 		limit 
+		limit column,type,default,variant,pattern
+limit-preset, lp <Column: Any> <Preset Name: String>
+	Set limiter from preset. You can define presets in $HOME/.ced_preset.csv or
+	%APPDATA%/.ced_preset.csv
 
+	Format of preset file is same with schema file but first value is
+	preset_name instead of column_name.
+
+	There are built-in presets which are 
+		- text
+		- number
+		- float
+		- email
+		- date
+		- time
+		- url
+
+	e.g)
+		limit-preset column email 
+		lp column url
 schema, s <FILE> <FORCE>
 	Read schema file. Second argument is whether to force update or not.
 

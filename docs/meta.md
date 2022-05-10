@@ -4,15 +4,42 @@
 - No bloat: dependencies are better when smallest
 * [ ] Library usage ergonomic binding
 
-* [x] Document CED_HISTORY_CAPACITY
-* [ ] Automatic build tests
-* [ ] Print with numbers lines with bigger number has strange artifact, which has low priority but yeah anyway
+* [x] Limiter respects csv convention now
+* [x] Limiter preset
+	* [x] Include this in command\_loop
 
 -> Hard
 
+* [ ] Command read from stdin by default ( This is possible with simple read\_line solution )
+* [ ] Print with numbers lines with bigger number has strange artifact, which has low priority but yeah anyway
+* [ ] Automatic build tests
 * [ ] Get + Set selection api ( Consider if this is necessary, not mandate but eaiser for end users )
 * [ ] Make test script -> Ok... this is quite cumbersome
 * [ ] Command based undo mechanic
+
+### SEMI-DONE
+
+* [-] Import as page name support? Hmm... This may not be necessary though
+* [-] ~~Floating point type~~ : Not worth the hassle
+* [x] Document CED\_HISTORY\_CAPACITY
+* [x] Removed trailing comma in default print method
+* [x] Support multi-page for virtual data
+	- This is conceptually done but not thoroughly tested because current
+	development is focuesed on simplest cil usage. This can be improved when
+	proper tui implemenation is developed 
+* [x] Command can literaly fail if no page is imported.
+	- SOLUTION : Add empty page when starting a binary ( Command loop )
+* [x] Added d-quoted comma support
+	* [x] Also in edit cell method
+	* [x] Should not strip completely because stripped value cannot be passed to other progams.
+		* [x] Processor split method
+		* [x] Utils strip method
+		* [x] Command print method
+* [x] Currently edit variants do nothing if data is empty which is confusing. Infer the emptiness to user.
+* [x] Execute command
+	* [x] Read command from file
+
+* [x] Empty option flag is not an error and this is confusing
 
 ### NOT TODO
 
