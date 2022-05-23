@@ -5,8 +5,6 @@ Ths is a csv editor and a backend for other frontends.
 Ced is not a fully featured editor, but more likely an "ed" for csv. Ced simply
 prevents you from adding surplus column or invalid data type. 
 
-That's it. No searching, filtering, no nothing.
-
 ### Install
 
 ```bash
@@ -82,6 +80,3 @@ Second Header = .. <USER_INPUT>
 # Redo previous undo
 >> redo
 ```
-
-### Yet to come
-- Library usage and ergonomic binding

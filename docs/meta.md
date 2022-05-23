@@ -1,5 +1,7 @@
 ### TODO
 
+* [ ] Create test.rs for easier testing
+
 - In built cli's interface should be simple and easy but also lightweight and fast.
 - No bloat: dependencies are better when smallest
 * [ ] Library usage ergonomic binding
