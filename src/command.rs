@@ -1006,7 +1006,7 @@ impl Processor {
         // 0 length csv is panicking error at this moment, thus safe to unwrap
         let header_with_number = format!(
             "{: ^digits_count$}| {}\n",
-            "H  ",
+            "H ",
             page.columns
                 .iter()
                 .enumerate()
