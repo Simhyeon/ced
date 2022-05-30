@@ -1,6 +1,6 @@
-use crate::{Command, Processor, utils, CedResult , cli::help};
 use crate::cli::parse::{FlagType, Parser};
 use crate::command::{CommandHistory, CommandType};
+use crate::{cli::help, utils, CedResult, Command, Processor};
 
 pub fn start_main_loop() -> CedResult<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -44,10 +44,17 @@ pub fn start_main_loop() -> CedResult<()> {
             FlagType::NoLog => {
                 command_loop.no_log();
             }
+            // TODO
+            // Not implemented
+            FlagType::LineEnd => {
+                // NOT YET...
+            }
             FlagType::None => (),
         }
 
-        if item.early_exit { return Ok(()); }
+        if item.early_exit {
+            return Ok(());
+        }
     }
 
     // Add empty page
@@ -78,22 +85,30 @@ pub fn start_main_loop() -> CedResult<()> {
 }
 
 fn feed_import(file: &str, command_loop: &mut CommandLoop) -> CedResult<()> {
-    if let Err(err) = command_loop.feed_command(&Command::from_str(&format!("import {}", file))?,true) {
-        eprintln!("{}",err);
+    if let Err(err) =
+        command_loop.feed_command(&Command::from_str(&format!("import {}", file))?, true)
+    {
+        eprintln!("{}", err);
         return Ok(());
     }
     Ok(())
 }
 
 fn feed_schema(file: &str, command_loop: &mut CommandLoop) -> CedResult<()> {
-    if let Err(err) = command_loop.feed_command(&Command::from_str(&format!("schema {} true", file))?,true) {
-        eprintln!("{}",err);
+    if let Err(err) =
+        command_loop.feed_command(&Command::from_str(&format!("schema {} true", file))?, true)
+    {
+        eprintln!("{}", err);
         return Ok(());
     }
     Ok(())
 }
 
-fn feed_command(command: &str, command_loop: &mut CommandLoop, write_confirm: bool) -> CedResult<()> {
+fn feed_command(
+    command: &str,
+    command_loop: &mut CommandLoop,
+    write_confirm: bool,
+) -> CedResult<()> {
     let command_split: Vec<&str> = command.split_terminator(";").collect();
     for command in command_split {
         let command = Command::from_str(command)?;
@@ -106,12 +121,12 @@ fn feed_command(command: &str, command_loop: &mut CommandLoop, write_confirm: bo
             }
         }
 
-        if let Err(err) = command_loop.feed_command(&command,true) {
-            eprintln!("{}",err);
+        if let Err(err) = command_loop.feed_command(&command, true) {
+            eprintln!("{}", err);
             return Ok(());
         }
     }
-    
+
     Ok(())
 }
 
@@ -171,7 +186,7 @@ impl CommandLoop {
                 return Ok(());
             }
             // Un-redoable commands
-            | CommandType::Exit
+            CommandType::Exit
             | CommandType::Import
             | CommandType::Export
             | CommandType::Create
@@ -186,8 +201,7 @@ impl CommandLoop {
             | CommandType::Print => (),
 
             // Meta related
-            CommandType::Help
-            | CommandType::Version => (),
+            CommandType::Help | CommandType::Version => (),
 
             _ => self.history.take_snapshot(self.processor.get_page_data()?),
         }
@@ -217,8 +231,7 @@ impl CommandLoop {
     }
 
     fn add_empty_page(&mut self) -> CedResult<()> {
-        self.processor.add_page("\\EMPTY", "",false)?;
+        self.processor.add_page("\\EMPTY", "", false)?;
         Ok(())
     }
 }
-
