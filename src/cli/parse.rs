@@ -7,7 +7,7 @@ pub struct Parser {
 impl Parser {
     pub fn new() -> Self {
         Self {
-            flags : vec![],
+            flags: vec![],
             accept_flag_option: false,
         }
     }
@@ -20,7 +20,9 @@ impl Parser {
     pub fn parse_from_vec(&mut self, source: &Vec<impl AsRef<str>>) -> Vec<Flag> {
         for item in source {
             let should_break = self.find_word_variant(item.as_ref());
-            if should_break {return std::mem::replace(&mut self.flags, vec![]);}
+            if should_break {
+                return std::mem::replace(&mut self.flags, vec![]);
+            }
         }
         std::mem::replace(&mut self.flags, vec![])
     }
@@ -32,12 +34,13 @@ impl Parser {
         // Add argument
         if !self.accept_flag_option && !word.starts_with("-") {
             self.flags.push(Flag::argument(word))
-        } else { // Add other flag
-            // You cannot set accept_flag_option without setting a flag 
+        } else {
+            // Add other flag
+            // You cannot set accept_flag_option without setting a flag
             // thus it is safe to unwrap
             if self.accept_flag_option {
                 self.flags.last_mut().unwrap().option = word.to_string();
-                self.accept_flag_option = false; 
+                self.accept_flag_option = false;
                 return false;
             }
 
@@ -46,7 +49,7 @@ impl Parser {
             if flag.early_exit {
                 self.flags = vec![flag];
                 return true;
-            } 
+            }
 
             if flag.need_option {
                 self.accept_flag_option = true;
@@ -68,6 +71,7 @@ impl Parser {
             "--schema" | "-s" => Flag::schema(),
             "--confirm" | "-C" => Flag::confirm(),
             "--nolog" | "-n" => Flag::nolog(),
+            "--line-end" | "-l" => Flag::line_end(),
             _ => Flag::empty(),
         }
     }
@@ -84,8 +88,8 @@ pub struct Flag {
 impl Flag {
     pub fn empty() -> Self {
         Self {
-            ftype : FlagType::None,
-            need_option : false,
+            ftype: FlagType::None,
+            need_option: false,
             option: String::new(),
             early_exit: false,
         }
@@ -93,8 +97,8 @@ impl Flag {
 
     pub fn argument(arg: &str) -> Self {
         Self {
-            ftype : FlagType::Argument,
-            need_option : false,
+            ftype: FlagType::Argument,
+            need_option: false,
             option: arg.to_string(),
             early_exit: false,
         }
@@ -102,8 +106,8 @@ impl Flag {
 
     pub fn schema() -> Self {
         Self {
-            ftype : FlagType::Schema,
-            need_option : true,
+            ftype: FlagType::Schema,
+            need_option: true,
             option: String::new(),
             early_exit: false,
         }
@@ -111,8 +115,8 @@ impl Flag {
 
     pub fn command() -> Self {
         Self {
-            ftype : FlagType::Command,
-            need_option : true,
+            ftype: FlagType::Command,
+            need_option: true,
             option: String::new(),
             early_exit: false,
         }
@@ -120,8 +124,8 @@ impl Flag {
 
     pub fn confirm() -> Self {
         Self {
-            ftype : FlagType::Confirm,
-            need_option : false,
+            ftype: FlagType::Confirm,
+            need_option: false,
             option: String::new(),
             early_exit: false,
         }
@@ -129,8 +133,8 @@ impl Flag {
 
     pub fn nolog() -> Self {
         Self {
-            ftype : FlagType::NoLog,
-            need_option : false,
+            ftype: FlagType::NoLog,
+            need_option: false,
             option: String::new(),
             early_exit: false,
         }
@@ -139,7 +143,7 @@ impl Flag {
     pub fn version() -> Self {
         Self {
             ftype: FlagType::Version,
-            need_option : false,
+            need_option: false,
             option: String::new(),
             early_exit: true,
         }
@@ -148,9 +152,18 @@ impl Flag {
     pub fn help() -> Self {
         Self {
             ftype: FlagType::Help,
-            need_option : false,
+            need_option: false,
             option: String::new(),
             early_exit: true,
+        }
+    }
+
+    pub fn line_end() -> Self {
+        Self {
+            ftype: FlagType::LineEnd,
+            need_option: true,
+            option: String::new(),
+            early_exit: false,
         }
     }
 }
@@ -164,5 +177,6 @@ pub enum FlagType {
     Schema,
     Version,
     NoLog,
+    LineEnd,
     None,
 }
