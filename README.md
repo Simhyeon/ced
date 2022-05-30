@@ -80,3 +80,8 @@ Second Header = .. <USER_INPUT>
 # Redo previous undo
 >> redo
 ```
+
+### Note
+
+Currently CR(Old Mac OS line ending) format is not supported. CRLF and LF
+works. This might change in future releases.

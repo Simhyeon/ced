@@ -4,3 +4,4 @@ test.csv
 schema.csv
 preset.csv
 backup
+*.csv

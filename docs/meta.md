@@ -1,5 +1,7 @@
 ### TODO
 
+* [X] Improved default print formatting
+* [x] Fixed empty row error
 * [ ] Create test.rs for easier testing
 
 - In built cli's interface should be simple and easy but also lightweight and fast.

@@ -23,4 +23,4 @@ path="src/cli/bin.rs"
 cli = []
 
 [dependencies]
-dcsv = "0.1.0"
+dcsv = "0.1.1"
