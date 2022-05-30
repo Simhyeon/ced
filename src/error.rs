@@ -16,13 +16,15 @@ pub enum CedError {
 impl std::fmt::Display for CedError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::CommandError(txt) => write!(f,"ERR : Invalid command call =\n{0}",txt),
-            Self::CsvDataError(err) => write!(f,"{err}"),
-            Self::InvalidColumn(txt) => write!(f,"ERR : Invalid column =\n{0}",txt),
-            Self::InvalidPageOperation(txt) => write!(f,"ERR : Invalid page operation =\n{0}",txt),
-            Self::InvalidRowData(txt) => write!(f,"ERR : Invalid row data =\n{0}",txt),
-            Self::IoError(io_error) => write!(f,"ERR : IO Error =\n{0}",io_error),
-            Self::OutOfRangeError => write!(f,"ERR : Index out of range"),
+            Self::CommandError(txt) => write!(f, "ERR : Invalid command call =\n{0}", txt),
+            Self::CsvDataError(err) => write!(f, "{err}"),
+            Self::InvalidColumn(txt) => write!(f, "ERR : Invalid column =\n{0}", txt),
+            Self::InvalidPageOperation(txt) => {
+                write!(f, "ERR : Invalid page operation =\n{0}", txt)
+            }
+            Self::InvalidRowData(txt) => write!(f, "ERR : Invalid row data =\n{0}", txt),
+            Self::IoError(io_error) => write!(f, "ERR : IO Error =\n{0}", io_error),
+            Self::OutOfRangeError => write!(f, "ERR : Index out of range"),
         }
     }
 }

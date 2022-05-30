@@ -50,7 +50,10 @@ pub(crate) fn read_stdin(strip_newline: bool) -> CedResult<String> {
     Ok(input)
 }
 
-pub(crate) fn subprocess(args: &Vec<impl AsRef<OsStr>>, process_standard_input: Option<String>) -> CedResult<()> {
+pub(crate) fn subprocess(
+    args: &Vec<impl AsRef<OsStr>>,
+    process_standard_input: Option<String>,
+) -> CedResult<()> {
     #[cfg(target_os = "windows")]
     let mut process = std::process::Command::new("cmd")
         .arg("/C")
@@ -58,7 +61,10 @@ pub(crate) fn subprocess(args: &Vec<impl AsRef<OsStr>>, process_standard_input: 
         .stdin(Stdio::piped())
         .spawn()
         .map_err(|_| {
-            CedError::CommandError(format!("Failed to execute command : \"{:?}\"", &args[0].as_ref()))
+            CedError::CommandError(format!(
+                "Failed to execute command : \"{:?}\"",
+                &args[0].as_ref()
+            ))
         })?;
     #[cfg(not(target_os = "windows"))]
     let mut process = std::process::Command::new("sh")
@@ -67,21 +73,23 @@ pub(crate) fn subprocess(args: &Vec<impl AsRef<OsStr>>, process_standard_input: 
         .stdin(Stdio::piped())
         .spawn()
         .map_err(|_| {
-            CedError::CommandError(format!("Failed to execute command : \"{:?}\"", &args[0].as_ref()))
+            CedError::CommandError(format!(
+                "Failed to execute command : \"{:?}\"",
+                &args[0].as_ref()
+            ))
         })?;
 
-    let mut stdin = process
-        .stdin
-        .take()
-        .ok_or(CedError::CommandError("Failed to read from stdin".to_string()))?;
+    let mut stdin = process.stdin.take().ok_or(CedError::CommandError(
+        "Failed to read from stdin".to_string(),
+    ))?;
 
     if let Some(input) = process_standard_input {
         std::thread::spawn(move || {
             stdin
                 .write_all(input.as_bytes())
                 .expect("Failed to write to stdin");
-            });
-    } 
+        });
+    }
 
     let output = process
         .wait_with_output()
@@ -101,7 +109,7 @@ pub(crate) fn subprocess(args: &Vec<impl AsRef<OsStr>>, process_standard_input: 
 /// Strip double quotes from csv value
 ///
 /// This will return None if given value doesn't qualify with csv spec
-pub(crate) fn is_valid_csv(value : &str) -> bool {
+pub(crate) fn is_valid_csv(value: &str) -> bool {
     let mut on_quote = false;
     let mut previous = ' ';
     let mut iter = value.chars().peekable();
@@ -111,22 +119,22 @@ pub(crate) fn is_valid_csv(value : &str) -> bool {
                 // Add literal double quote if previous was same character
                 if previous == '"' {
                     previous = ' '; // Reset previous
-                } else { // Start quote
-                    if let Some('"') = iter.peek() { }
-                    else {
+                } else {
+                    // Start quote
+                    if let Some('"') = iter.peek() {
+                    } else {
                         on_quote = !on_quote;
                     }
                     previous = ch;
                 }
-            },
+            }
             ',' => {
                 // This is unallowed in csv spec
                 if !on_quote {
                     return false;
                 } else {
-
                 }
-            },
+            }
             _ => previous = ch,
         }
     }

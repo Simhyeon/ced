@@ -2,8 +2,8 @@
 // It is "not" trivial...
 
 use crate::CedResult;
-use crate::Processor;
 use crate::Command;
+use crate::Processor;
 
 const TEST1_CSV: &str = include_str!("../test/test1.csv");
 

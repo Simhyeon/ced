@@ -17,6 +17,6 @@ pub(crate) mod processor;
 
 #[cfg(feature = "cli")]
 pub use cli::command_loop::start_main_loop;
+pub use command::{Command, CommandType};
 pub use error::{CedError, CedResult};
 pub use processor::Processor;
-pub use command::{Command, CommandType};

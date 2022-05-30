@@ -1,15 +1,15 @@
-use crate::utils::{self,subprocess};
-use crate::error::{CedError, CedResult};
-use crate::processor::Processor;
-use dcsv::{Value,ValueType, ValueLimiter};
-use dcsv::{SCHEMA_HEADER, Row, Column};
-use utils::DEFAULT_DELIMITER;
 #[cfg(feature = "cli")]
 use crate::cli::help;
+use crate::error::{CedError, CedResult};
+use crate::processor::Processor;
+use crate::utils::{self, subprocess};
 #[cfg(feature = "cli")]
 use dcsv::VirtualData;
+use dcsv::{Column, Row, SCHEMA_HEADER};
+use dcsv::{Value, ValueLimiter, ValueType};
 use std::io::Write;
 use std::{ops::Sub, path::Path};
+use utils::DEFAULT_DELIMITER;
 
 #[derive(PartialEq, Debug)]
 pub enum CommandType {
@@ -123,15 +123,15 @@ impl Command {
 /// Affected data container
 #[allow(dead_code)]
 enum CommandResult {
-    Cell(usize,usize,Value),
+    Cell(usize, usize, Value),
     Rows(Vec<Row>),
     Columns(Vec<Column>),
 }
 
 #[allow(dead_code)]
 struct CommandRecord {
-    command : Command,
-    command_result : CommandResult,
+    command: Command,
+    command_result: CommandResult,
 }
 
 // Default history capacity double word
@@ -146,15 +146,19 @@ pub struct CommandHistory {
     redo_history: Vec<VirtualData>,
     history_capacity: usize,
 }
-            
+
 #[cfg(feature = "cli")]
 impl CommandHistory {
     pub fn new() -> Self {
         let capacity = if let Ok(cap) = std::env::var("CED_HISTORY_CAPACITY") {
-            if let Ok(num) = cap.parse::<usize>() { 
+            if let Ok(num) = cap.parse::<usize>() {
                 num
-            } else { HISTORY_CAPACITY }
-        } else { HISTORY_CAPACITY };
+            } else {
+                HISTORY_CAPACITY
+            }
+        } else {
+            HISTORY_CAPACITY
+        };
         Self {
             memento_history: vec![],
             redo_history: vec![],
@@ -195,7 +199,9 @@ impl Processor {
             CommandType::Version => help::print_version(),
             #[cfg(feature = "cli")]
             CommandType::Help => self.print_help_from_args(&command.arguments)?,
-            CommandType::None(src) => return Err(CedError::CommandError(format!("No such command \"{src}\""))),
+            CommandType::None(src) => {
+                return Err(CedError::CommandError(format!("No such command \"{src}\"")))
+            }
             CommandType::Import => self.import_file_from_args(&command.arguments)?,
             CommandType::Schema => self.import_schema_from_args(&command.arguments)?,
             CommandType::SchemaInit => self.init_schema_from_args(&command.arguments)?,
@@ -246,7 +252,10 @@ impl Processor {
             CedError::CommandError(format!("\"{}\" is not a valid row number", args[1]))
         })?;
         self.move_row(src_number, target_number)?;
-        self.log(&format!("Row moved from \"{}\" to \"{}\"\n", src_number, target_number))?;
+        self.log(&format!(
+            "Row moved from \"{}\" to \"{}\"\n",
+            src_number, target_number
+        ))?;
         Ok(())
     }
 
@@ -271,7 +280,10 @@ impl Processor {
                     args[1]
                 )))?;
         self.move_column(src_number, target_number)?;
-        self.log(&format!("Column moved from \"{}\" to \"{}\"\n", src_number, target_number))?;
+        self.log(&format!(
+            "Column moved from \"{}\" to \"{}\"\n",
+            src_number, target_number
+        ))?;
         Ok(())
     }
 
@@ -286,7 +298,10 @@ impl Processor {
         let new_name = &args[1];
 
         self.rename_column(&column, &new_name)?;
-        self.log(&format!("Column renamed from \"{}\" to \"{}\"\n", column, new_name))?;
+        self.log(&format!(
+            "Column renamed from \"{}\" to \"{}\"\n",
+            column, new_name
+        ))?;
         Ok(())
     }
 
@@ -295,13 +310,15 @@ impl Processor {
         let len = args.len();
         let row_number: usize;
         match len {
-            0 => { // No row
+            0 => {
+                // No row
                 return Err(CedError::CommandError(format!(
-                            "Insufficient arguments for edit-row"
+                    "Insufficient arguments for edit-row"
                 )));
             }
             #[cfg(feature = "cli")]
-            1 => { // Only row
+            1 => {
+                // Only row
                 row_number = args[0].parse::<usize>().map_err(|_| {
                     CedError::CommandError(format!("\"{}\" is not a valid row number", args[0]))
                 })?;
@@ -312,7 +329,8 @@ impl Processor {
                 }
                 self.edit_row(row_number, values)?;
             }
-            _ => { // From 2.. row + data
+            _ => {
+                // From 2.. row + data
                 row_number = args[0].parse::<usize>().map_err(|_| {
                     CedError::CommandError(format!("\"{}\" is not a valid row number", args[0]))
                 })?;
@@ -336,13 +354,15 @@ impl Processor {
         let mut end_index = self.get_row_count()?.max(1) - 1;
         match len {
             // No row
-            0 => { }
-            1 => { // Only starting row
+            0 => {}
+            1 => {
+                // Only starting row
                 start_index = args[0].parse::<usize>().map_err(|_| {
                     CedError::CommandError(format!("\"{}\" is not a valid row number", args[0]))
                 })?;
             }
-            _ => { // From 2.. Starting row + ending row
+            _ => {
+                // From 2.. Starting row + ending row
                 start_index = args[0].parse::<usize>().map_err(|_| {
                     CedError::CommandError(format!("\"{}\" is not a valid row number", args[0]))
                 })?;
@@ -360,15 +380,18 @@ impl Processor {
             if values.len() == 0 {
                 return Ok(());
             }
-            edit_target_values.push((index,values));
+            edit_target_values.push((index, values));
         }
 
         // Edit rows only if every operation was succesfull
-        for (index,values) in edit_target_values {
+        for (index, values) in edit_target_values {
             self.edit_row(index, values)?;
         }
 
-        self.log(&format!("Rows {}~{} contents changed\n", start_index, end_index))?;
+        self.log(&format!(
+            "Rows {}~{} contents changed\n",
+            start_index, end_index
+        ))?;
         Ok(())
     }
 
@@ -383,7 +406,10 @@ impl Processor {
         let new_value = &args[1];
 
         self.edit_column(column, new_value)?;
-        self.log(&format!("Column \"{}\" content changed to \"{}\"\n", column, new_value))?;
+        self.log(&format!(
+            "Column \"{}\" content changed to \"{}\"\n",
+            column, new_value
+        ))?;
         Ok(())
     }
 
@@ -393,7 +419,11 @@ impl Processor {
         }
 
         let coord = &args[0].split(',').collect::<Vec<&str>>();
-        let value = if args.len() >= 2 { args[1..].join(" ") } else { String::new() };
+        let value = if args.len() >= 2 {
+            args[1..].join(" ")
+        } else {
+            String::new()
+        };
         if coord.len() != 2 {
             return Err(CedError::CommandError(format!(
                 "Cell cooridnate should be in a form of \"row,column\""
@@ -409,16 +439,19 @@ impl Processor {
         let row = coord[0].parse::<usize>().map_err(|_| {
             CedError::CommandError(format!("\"{}\" is not a valid row number", coord[0]))
         })?;
-        let column = self
-            .get_page_data()?
-            .try_get_column_index(coord[1])
-            .ok_or(CedError::InvalidColumn(format!(
-                "Column : \"{}\" is not valid",
-                coord[1]
-            )))?;
+        let column =
+            self.get_page_data()?
+                .try_get_column_index(coord[1])
+                .ok_or(CedError::InvalidColumn(format!(
+                    "Column : \"{}\" is not valid",
+                    coord[1]
+                )))?;
 
         self.edit_cell(row, column, &value)?;
-        self.log(&format!("Cell \"({},{})\" content changed to \"{}\"\n", row,coord[1],&&value))?;
+        self.log(&format!(
+            "Cell \"({},{})\" content changed to \"{}\"\n",
+            row, coord[1], &&value
+        ))?;
         Ok(())
     }
 
@@ -427,11 +460,13 @@ impl Processor {
         let row_number: usize;
         match len {
             #[cfg(feature = "cli")]
-            0 => { // No row number
+            0 => {
+                // No row number
                 row_number = self.get_row_count()?;
                 if row_number > self.get_row_count()? {
                     return Err(CedError::InvalidColumn(format!(
-                                "Cannot add row to out of range position : {}", row_number
+                        "Cannot add row to out of range position : {}",
+                        row_number
                     )));
                 }
                 utils::write_to_stdout("Type comma(,) to exit input\n")?;
@@ -442,13 +477,15 @@ impl Processor {
                 self.add_row(row_number, Some(&values))?;
             }
             #[cfg(feature = "cli")]
-            1 => { // Only row number
+            1 => {
+                // Only row number
                 row_number = args[0].parse::<usize>().map_err(|_| {
                     CedError::CommandError(format!("\"{}\" is not a valid row number", args[0]))
                 })?;
                 if row_number > self.get_row_count()? {
                     return Err(CedError::InvalidColumn(format!(
-                                "Cannot add row to out of range position : {}", row_number
+                        "Cannot add row to out of range position : {}",
+                        row_number
                     )));
                 }
                 utils::write_to_stdout("Type comma(,) to exit input\n")?;
@@ -458,7 +495,8 @@ impl Processor {
                 }
                 self.add_row(row_number, Some(&values))?;
             }
-            _ => { // From 2.. row + data
+            _ => {
+                // From 2.. row + data
                 row_number = args[0].parse::<usize>().map_err(|_| {
                     CedError::CommandError(format!("\"{}\" is not a valid row number", args[0]))
                 })?;
@@ -478,7 +516,7 @@ impl Processor {
     ///
     /// Return value decided whether early return or not
     #[cfg(feature = "cli")]
-    fn loop_value_check(value: &mut Value, type_mismatch : &mut bool) -> bool {
+    fn loop_value_check(value: &mut Value, type_mismatch: &mut bool) -> bool {
         // Check value content
         // Early return
         if let Value::Text(content) = value {
@@ -488,9 +526,9 @@ impl Processor {
 
             // Check csv validity
             if !utils::is_valid_csv(&content) {
-                // It is considered as type_mismatch 
+                // It is considered as type_mismatch
                 *type_mismatch = true;
-            } 
+            }
         }
         false
     }
@@ -503,11 +541,13 @@ impl Processor {
             utils::write_to_stdout(": Csv is empty : \n")?;
             return Ok(vec![]);
         }
-        for (idx,col) in columns.iter().enumerate() {
-            let mut value : Value;
+        for (idx, col) in columns.iter().enumerate() {
+            let mut value: Value;
             let mut type_mismatch = false;
             let default = if let Some(row_number) = row_number {
-                self.get_cell(row_number,idx)?.ok_or(CedError::OutOfRangeError)?.to_owned()
+                self.get_cell(row_number, idx)?
+                    .ok_or(CedError::OutOfRangeError)?
+                    .to_owned()
             } else {
                 col.get_default_value()
             };
@@ -527,12 +567,14 @@ impl Processor {
 
             if Self::loop_value_check(&mut value, &mut type_mismatch) {
                 utils::write_to_stdout(": Prompt interrupted :\n")?;
-                return Ok(vec!());
+                return Ok(vec![]);
             }
 
             while !col.limiter.qualify(&value) || type_mismatch {
                 type_mismatch = false;
-                utils::write_to_stdout("Given value doesn't qualify column limiter or is not a valid csv value\n")?;
+                utils::write_to_stdout(
+                    "Given value doesn't qualify column limiter or is not a valid csv value\n",
+                )?;
                 utils::write_to_stdout(&format!("{}~{{{}}} = ", col.name, default))?;
                 let value_src = utils::read_stdin(true)?;
                 value = if value_src.len() != 0 {
@@ -549,9 +591,8 @@ impl Processor {
 
                 if Self::loop_value_check(&mut value, &mut type_mismatch) {
                     utils::write_to_stdout(": Prompt interrupted :\n")?;
-                    return Ok(vec!());
+                    return Ok(vec![]);
                 }
-
             }
 
             values.push(value);
@@ -559,7 +600,7 @@ impl Processor {
         Ok(values)
     }
 
-    // None means value should not change 
+    // None means value should not change
     #[cfg(feature = "cli")]
     fn edit_row_loop(&mut self, row_number: Option<usize>) -> CedResult<Vec<Option<Value>>> {
         let mut values = vec![];
@@ -568,11 +609,13 @@ impl Processor {
             utils::write_to_stdout(": Csv is empty : \n")?;
             return Ok(vec![]);
         }
-        for (idx,col) in columns.iter().enumerate() {
-            let mut value : Option<Value>;
+        for (idx, col) in columns.iter().enumerate() {
+            let mut value: Option<Value>;
             let mut type_mismatch = false;
             let default = if let Some(row_number) = row_number {
-                self.get_cell(row_number,idx)?.ok_or(CedError::OutOfRangeError)?.to_owned()
+                self.get_cell(row_number, idx)?
+                    .ok_or(CedError::OutOfRangeError)?
+                    .to_owned()
             } else {
                 col.get_default_value()
             };
@@ -594,11 +637,12 @@ impl Processor {
             if let Some(value) = value.as_mut() {
                 if Self::loop_value_check(value, &mut type_mismatch) {
                     utils::write_to_stdout(": Prompt interrupted :\n")?;
-                    return Ok(vec!());
+                    return Ok(vec![]);
                 }
             }
 
-            while value != None { // when value was not a "Not changed"
+            while value != None {
+                // when value was not a "Not changed"
                 if col.limiter.qualify(&value.as_ref().unwrap()) && !type_mismatch {
                     break;
                 }
@@ -622,7 +666,7 @@ impl Processor {
                 if let Some(value) = value.as_mut() {
                     if Self::loop_value_check(value, &mut type_mismatch) {
                         utils::write_to_stdout(": Prompt interrupted :\n")?;
-                        return Ok(vec!());
+                        return Ok(vec![]);
                     }
                 }
             }
@@ -660,7 +704,10 @@ impl Processor {
         }
 
         self.add_column(column_number, column_name, column_type, None, placeholder)?;
-        self.log(&format!("New column \"{}\" added to \"{}\"\n", column_name, column_number))?;
+        self.log(&format!(
+            "New column \"{}\" added to \"{}\"\n",
+            column_name, column_number
+        ))?;
         Ok(())
     }
 
@@ -668,9 +715,9 @@ impl Processor {
         let row_count = if args.len() == 0 {
             self.get_row_count()?
         } else {
-            args[0]
-                .parse::<usize>()
-                .map_err(|_| CedError::CommandError(format!("\"{}\" is not a valid index", args[0])))?
+            args[0].parse::<usize>().map_err(|_| {
+                CedError::CommandError(format!("\"{}\" is not a valid index", args[0]))
+            })?
         }
         .sub(1);
 
@@ -746,7 +793,7 @@ impl Processor {
                 .map_err(|_| CedError::CommandError(format!("{force} is not a valid value")))?,
         )?;
         self.log(&format!("Schema \"{}\" applied\n", &args[0]))?;
-        Ok(() )
+        Ok(())
     }
 
     fn export_schema_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
@@ -762,7 +809,7 @@ impl Processor {
         file.write_all(self.export_schema()?.as_bytes())
             .map_err(|err| CedError::io_error(err, "Failed to write schema to a file"))?;
 
-        self.log(&format!("Schema exported to \"{}\"\n",args[0]))?;
+        self.log(&format!("Schema exported to \"{}\"\n", args[0]))?;
         Ok(())
     }
 
@@ -801,20 +848,25 @@ impl Processor {
             cache = true;
         }
         let success = self.overwrite_to_file(cache)?;
-        if success {self.log(&format!("File overwritten to \"{}\"\n", self.file.as_ref().unwrap().display()))?;}
+        if success {
+            self.log(&format!(
+                "File overwritten to \"{}\"\n",
+                self.file.as_ref().unwrap().display()
+            ))?;
+        }
         Ok(())
     }
 
     // Combine ths with viewer variant
     fn print(&mut self, args: &Vec<String>) -> CedResult<()> {
         let mut viewer = vec![];
-        // Use given command 
+        // Use given command
         // or use environment variable
         // External command has higher priority
         if args.len() >= 1 {
             viewer = args[0..].to_vec();
         } else if let Ok(var) = std::env::var("CED_VIEWER") {
-            viewer = var.split_whitespace().map(|s| s.to_string()).collect(); 
+            viewer = var.split_whitespace().map(|s| s.to_string()).collect();
         }
 
         if viewer.len() == 0 {
@@ -837,32 +889,34 @@ impl Processor {
         let coord = args[0].split(',').collect::<Vec<&str>>();
         if coord.len() < 2 {
             return Err(CedError::CommandError(format!(
-                "\"{}\' is not a valid cell coordinate", args[0]
+                "\"{}\' is not a valid cell coordinate",
+                args[0]
             )));
         }
-        let (x,y) = (
+        let (x, y) = (
             coord[0].parse::<usize>().map_err(|_| {
-                    CedError::CommandError("You need to feed usize number for coordinate".to_string())
+                CedError::CommandError("You need to feed usize number for coordinate".to_string())
             })?,
-            self.get_page_data()?.try_get_column_index(coord[1]).ok_or(CedError::CommandError("You need to appropriate column for coordinate".to_string())
-            )?
+            self.get_page_data()?
+                .try_get_column_index(coord[1])
+                .ok_or(CedError::CommandError(
+                    "You need to appropriate column for coordinate".to_string(),
+                ))?,
         );
 
         if args.len() >= 2 {
             print_mode = &args[1];
         }
 
-        match self.get_page_data()?.get_cell(x,y)? {
-            Some(cell) => {
-                match print_mode {
-                    "v" | "verbose" => utils::write_to_stdout(&format!("{:?}\n", cell))?,
-                    "d" | "debug" => {
-                        let col = self.get_column(y)?.ok_or(CedError::OutOfRangeError)?;
-                        utils::write_to_stdout(&format!("{:#?}\n", col))?;
-                        utils::write_to_stdout(&format!("Cell data : {:#?}\n", cell))?
-                    },
-                    _ => utils::write_to_stdout(&format!("{}\n", cell))?,
+        match self.get_page_data()?.get_cell(x, y)? {
+            Some(cell) => match print_mode {
+                "v" | "verbose" => utils::write_to_stdout(&format!("{:?}\n", cell))?,
+                "d" | "debug" => {
+                    let col = self.get_column(y)?.ok_or(CedError::OutOfRangeError)?;
+                    utils::write_to_stdout(&format!("{:#?}\n", col))?;
+                    utils::write_to_stdout(&format!("Cell data : {:#?}\n", cell))?
                 }
+                _ => utils::write_to_stdout(&format!("{}\n", cell))?,
             },
             None => utils::write_to_stdout("No such cell\n")?,
         }
@@ -872,25 +926,29 @@ impl Processor {
 
     fn print_row(&self, args: &Vec<String>) -> CedResult<()> {
         if args.len() < 1 {
-            return Err(CedError::CommandError(format!("Print-row needs row number")));
+            return Err(CedError::CommandError(format!(
+                "Print-row needs row number"
+            )));
         }
         let row = self.get_row(args[0].parse::<usize>().map_err(|_| {
             CedError::CommandError("You need to valid number as row number".to_string())
         })?)?;
 
         if let None = row {
-            return Err(CedError::CommandError(format!("Print-row needs row number")));
+            return Err(CedError::CommandError(format!(
+                "Print-row needs row number"
+            )));
         }
         let row = row.unwrap().to_string(&self.get_page_data()?.columns)? + "\n";
 
         let mut viewer = vec![];
-        // Use given command 
+        // Use given command
         // or use environment variable
         // External command has higher priority
         if args.len() >= 2 {
             viewer = args[1..].to_vec();
         } else if let Ok(var) = std::env::var("CED_VIEWER") {
-            viewer = var.split_whitespace().map(|s| s.to_string()).collect(); 
+            viewer = var.split_whitespace().map(|s| s.to_string()).collect();
         }
 
         subprocess(&viewer, Some(row))
@@ -912,10 +970,19 @@ impl Processor {
             if col < self.get_page_data()?.get_column_count() {
                 let col = self.get_column(col)?.ok_or(CedError::OutOfRangeError)?;
                 match print_mode {
-                    "debug"|"d" => utils::write_to_stdout(&format!("{:#?}\n", col))?,
-                    "verbose" |"v" => utils::write_to_stdout(&format!("Column = \nName: {}\nType: {}\n---\nLimiter =\n{}", col.get_name(), col.get_column_type(), col.limiter))?,
-                    _ => utils::write_to_stdout(&format!("Name: {}\nType: {}\n", col.get_name(), col.get_column_type()))?,
-                } 
+                    "debug" | "d" => utils::write_to_stdout(&format!("{:#?}\n", col))?,
+                    "verbose" | "v" => utils::write_to_stdout(&format!(
+                        "Column = \nName: {}\nType: {}\n---\nLimiter =\n{}",
+                        col.get_name(),
+                        col.get_column_type(),
+                        col.limiter
+                    ))?,
+                    _ => utils::write_to_stdout(&format!(
+                        "Name: {}\nType: {}\n",
+                        col.get_name(),
+                        col.get_column_type()
+                    ))?,
+                }
                 return Ok(());
             }
         }
@@ -935,23 +1002,35 @@ impl Processor {
             return Ok(());
         }
 
+        let digits_count = page.get_row_count().to_string().len();
         // 0 length csv is panicking error at this moment, thus safe to unwrap
         let header_with_number = format!(
-            " -> {}\n",
-            page.columns.iter()
+            "{: ^digits_count$}| {}\n",
+            "H  ",
+            page.columns
+                .iter()
                 .enumerate()
-                .map(|(i, col)| format!("[{}]-{}", i, col.name))
+                .map(|(i, col)| format!("[{}]:{}", i, col.name))
                 .collect::<Vec<String>>()
                 .join("")
         );
         utils::write_to_stdout(&header_with_number)?;
 
-        for (index,row) in page.rows.iter().enumerate() {
-            let row_string = page.columns.iter().enumerate().map(|(i,col)| {
-                let cell = row.get_cell_value(&col.name).unwrap_or(&Value::Text(String::new())).to_string();
-                format!("[{}]-{}", i, cell)
-            }).collect::<Vec<_>>().join("");
-            utils::write_to_stdout(&format!("{} | {}\n", index, row_string))?;
+        for (index, row) in page.rows.iter().enumerate() {
+            let row_string = page
+                .columns
+                .iter()
+                .enumerate()
+                .map(|(i, col)| {
+                    let cell = row
+                        .get_cell_value(&col.name)
+                        .unwrap_or(&Value::Text(String::new()))
+                        .to_string();
+                    format!("[{}]:{}", i, cell)
+                })
+                .collect::<Vec<_>>()
+                .join("");
+            utils::write_to_stdout(&format!("{: ^digits_count$} | {}\n", index, row_string))?;
         }
         Ok(())
     }
@@ -974,15 +1053,17 @@ impl Processor {
     pub fn limit_preset(&mut self, args: &Vec<String>) -> CedResult<()> {
         if args.len() < 2 {
             return Err(CedError::CommandError(format!(
-                        "Limit-preset needs column and preset_name"
+                "Limit-preset needs column and preset_name"
             )));
-        } 
+        }
         let column = &args[0];
         let preset_name = &args[1];
         let mut panic = true;
         if args.len() >= 3 {
             panic = !args[2].parse::<bool>().map_err(|_| {
-                CedError::CommandError("You need to feed boolean value for the force value".to_string())
+                CedError::CommandError(
+                    "You need to feed boolean value for the force value".to_string(),
+                )
             })?;
         }
         self.set_limiter_from_preset(column, preset_name, panic)?;
@@ -993,9 +1074,9 @@ impl Processor {
     pub fn execute_from_file(&mut self, args: &Vec<String>) -> CedResult<()> {
         if args.len() < 1 {
             return Err(CedError::CommandError(format!(
-                        "Execute needs a file to read from"
+                "Execute needs a file to read from"
             )));
-        } 
+        }
         let file = &args[0];
         let content = std::fs::read_to_string(file).map_err(|err| {
             CedError::io_error(
@@ -1004,11 +1085,15 @@ impl Processor {
             )
         })?;
         // Split by line
-        for (idx,line) in content.lines().enumerate() {
+        for (idx, line) in content.lines().enumerate() {
             // Split by semi colon
             for comm in line.split_terminator(';') {
                 if let Err(err) = self.execute_command(&Command::from_str(comm)?) {
-                    utils::write_to_stderr(&format!("Line : {} -> Failed to execute command : \"{}\"\n", idx+1,comm))?;
+                    utils::write_to_stderr(&format!(
+                        "Line : {} -> Failed to execute command : \"{}\"\n",
+                        idx + 1,
+                        comm
+                    ))?;
                     return Err(err);
                 }
             }
@@ -1041,7 +1126,9 @@ impl Processor {
             true
         } else {
             force.parse::<bool>().map_err(|_| {
-                CedError::CommandError("You need to feed boolean value for the force value".to_string())
+                CedError::CommandError(
+                    "You need to feed boolean value for the force value".to_string(),
+                )
             })?
         };
 

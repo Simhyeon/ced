@@ -16,18 +16,18 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use crate::error::{CedError, CedResult};
-use crate::utils;
-use dcsv::{Value, ValueLimiter, ValueType};
-use dcsv::{Column, Row, VirtualData};
 #[cfg(feature = "cli")]
 use crate::cli::preset::Preset;
+use crate::error::{CedError, CedResult};
+use crate::utils;
+use dcsv::{Column, Row, VirtualData};
+use dcsv::{Value, ValueLimiter, ValueType};
 use std::collections::HashMap;
 
 /// Csv processor
 pub struct Processor {
     pub(crate) file: Option<PathBuf>,
-    pub(crate) pages: HashMap<String,VirtualData>,
+    pub(crate) pages: HashMap<String, VirtualData>,
     pub(crate) cursor: Option<String>,
     pub(crate) print_logs: bool,
     #[cfg(feature = "cli")]
@@ -39,7 +39,7 @@ impl Processor {
         Self {
             file: None,
             pages: HashMap::new(),
-            cursor : None,
+            cursor: None,
             print_logs: true,
             #[cfg(feature = "cli")]
             preset: Preset::empty(),
@@ -47,14 +47,15 @@ impl Processor {
     }
 
     #[allow(dead_code)]
-    /// Change current page 
+    /// Change current page
     ///
     /// This doesn't affect page itself but change cursor.
     pub(crate) fn change_page(&mut self, page: &str) -> CedResult<()> {
-        if !self.pages.contains_key(page) { 
-            return Err(CedError::InvalidPageOperation(
-                    format!("No such page \"{}\"", page)
-            )) 
+        if !self.pages.contains_key(page) {
+            return Err(CedError::InvalidPageOperation(format!(
+                "No such page \"{}\"",
+                page
+            )));
         } else {
             self.cursor = Some(page.to_owned());
             Ok(())
@@ -63,13 +64,22 @@ impl Processor {
 
     /// Add new page
     pub(crate) fn add_page(&mut self, page: &str, data: &str, has_header: bool) -> CedResult<()> {
-        if self.pages.contains_key(page) { 
-            return Err(CedError::InvalidPageOperation(
-                    format!("\"{}\" already exists", page)
-            )) 
+        if self.pages.contains_key(page) {
+            return Err(CedError::InvalidPageOperation(format!(
+                "\"{}\" already exists",
+                page
+            )));
         } else {
-            // TODO
-            let csv_data = dcsv::Reader::new().has_header(has_header).read_from_stream(data.as_bytes())?;
+            let mut ignore_empty_row = true;
+            if let Ok(val) = std::env::var("CED_READ_STRICT") {
+                if val.to_lowercase() == "true" {
+                    ignore_empty_row = false;
+                }
+            }
+            let csv_data = dcsv::Reader::new()
+                .has_header(has_header)
+                .ignore_empty_row(ignore_empty_row)
+                .read_from_stream(data.as_bytes())?;
             self.pages.insert(page.to_owned(), csv_data);
             self.cursor = Some(page.to_owned());
             Ok(())
@@ -94,7 +104,12 @@ impl Processor {
     ///
     /// This return data's mutable reference as result
     pub(crate) fn get_page_data_mut(&mut self) -> CedResult<&mut VirtualData> {
-        self.pages.get_mut(self.cursor.as_ref().unwrap()).ok_or(CedError::InvalidPageOperation(format!("Cannot get page from cursor which is \"{:?}\"", self.cursor)))
+        self.pages
+            .get_mut(self.cursor.as_ref().unwrap())
+            .ok_or(CedError::InvalidPageOperation(format!(
+                "Cannot get page from cursor which is \"{:?}\"",
+                self.cursor
+            )))
     }
 
     /// Try get page data but panic if cursor is empty
@@ -104,7 +119,12 @@ impl Processor {
     ///
     /// This return data's mutable reference as result
     pub(crate) fn get_page_data(&self) -> CedResult<&VirtualData> {
-        self.pages.get(self.cursor.as_ref().unwrap()).ok_or(CedError::InvalidPageOperation(format!("Cannot get page from cursor which is \"{:?}\"", self.cursor)))
+        self.pages
+            .get(self.cursor.as_ref().unwrap())
+            .ok_or(CedError::InvalidPageOperation(format!(
+                "Cannot get page from cursor which is \"{:?}\"",
+                self.cursor
+            )))
     }
 
     pub(crate) fn log(&self, log: &str) -> CedResult<()> {
@@ -156,7 +176,8 @@ impl Processor {
     }
 
     pub fn edit_cell(&mut self, x: usize, y: usize, input: &str) -> CedResult<()> {
-        self.get_page_data_mut()?.set_cell_from_string(x, y, input)?;
+        self.get_page_data_mut()?
+            .set_cell_from_string(x, y, input)?;
         Ok(())
     }
 
@@ -167,25 +188,24 @@ impl Processor {
     }
 
     pub fn edit_row(&mut self, row_number: usize, input: Vec<Option<Value>>) -> CedResult<()> {
-        self.get_page_data_mut()?.edit_row(
-            row_number,
-            input
-        )?;
+        self.get_page_data_mut()?.edit_row(row_number, input)?;
         Ok(())
     }
 
     pub fn set_row(&mut self, row_number: usize, input: Vec<Value>) -> CedResult<()> {
-        self.get_page_data_mut()?.set_row(
-            row_number,
-            input
-        )?;
+        self.get_page_data_mut()?.set_row(row_number, input)?;
         Ok(())
     }
 
-    pub fn set_row_from_string(&mut self, row_number: usize, input: &Vec<impl AsRef<str>>) -> CedResult<()> {
+    pub fn set_row_from_string(
+        &mut self,
+        row_number: usize,
+        input: &Vec<impl AsRef<str>>,
+    ) -> CedResult<()> {
         self.get_page_data_mut()?.set_row(
             row_number,
-            input.iter()
+            input
+                .iter()
                 .map(|s| Value::Text(s.as_ref().to_owned()))
                 .collect(),
         )?;
@@ -216,10 +236,15 @@ impl Processor {
         column_name: &str,
         column_type: ValueType,
         limiter: Option<ValueLimiter>,
-        placeholder: Option<Value>
+        placeholder: Option<Value>,
     ) -> CedResult<()> {
-        self.get_page_data_mut()?
-            .insert_column(column_number, column_name, column_type, limiter, placeholder)?;
+        self.get_page_data_mut()?.insert_column(
+            column_number,
+            column_name,
+            column_type,
+            limiter,
+            placeholder,
+        )?;
         Ok(())
     }
 
@@ -235,13 +260,7 @@ impl Processor {
     pub fn add_column_array(&mut self, columns: &Vec<impl AsRef<str>>) -> CedResult<()> {
         for col in columns {
             let column_count = self.get_page_data_mut()?.get_column_count();
-            self.add_column(
-                column_count,
-                &col.as_ref(),
-                ValueType::Text,
-                None,
-                None
-            )?;
+            self.add_column(column_count, &col.as_ref(), ValueType::Text, None, None)?;
         }
         Ok(())
     }
@@ -304,7 +323,8 @@ impl Processor {
                 "{} is not a valid column",
                 column
             )))?;
-        self.get_page_data_mut()?.set_limiter(column, &limiter, panic)?;
+        self.get_page_data_mut()?
+            .set_limiter(column, &limiter, panic)?;
         Ok(())
     }
 
@@ -317,7 +337,12 @@ impl Processor {
     }
 
     #[cfg(feature = "cli")]
-    pub(crate) fn set_limiter_from_preset(&mut self,column: &str, preset_name: &str, panic: bool) -> CedResult<()> {
+    pub(crate) fn set_limiter_from_preset(
+        &mut self,
+        column: &str,
+        preset_name: &str,
+        panic: bool,
+    ) -> CedResult<()> {
         let preset = self.preset.get(preset_name).cloned();
         if let Some(limiter) = preset {
             self.set_limiter(column, &limiter, panic)?;
