@@ -33,8 +33,15 @@ ced --schema schema.csv data.csv --command 'add-row 1 100,20;write'
 
 # Start ced
 # Optionaly with initial import
+# Redundant arguments are sent as import options.
 ced
 ced file.csv
+ced no_header_file.csv false
+
+# Execute script
+# argument with .ced extension will be interpretted as execution script
+# In this case, loop variants are restricted
+ced script.ced
 
 # Get help
 >> help
