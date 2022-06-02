@@ -763,16 +763,25 @@ impl Processor {
                     "You have to specify a file name to import from"
                 )))
             }
-            1 => self.import_from_file(Path::new(&args[0]), true)?,
-            _ => self.import_from_file(
-                Path::new(&args[0]),
-                args[1].parse().map_err(|_| {
-                    CedError::CommandError(format!(
-                        "Given value \"{}\" shoul be a valid boolean value. ( has_header )",
-                        args[1]
-                    ))
-                })?,
-            )?,
+            1 => self.import_from_file(Path::new(&args[0]), true, None)?,
+            _ => {
+                // Optional line ending configuration
+                let mut line_ending = None; 
+                if args.len() > 2 && &args[2].to_lowercase() == "cr" {
+                    line_ending = Some('\r');
+                }
+
+                self.import_from_file(
+                    Path::new(&args[0]),
+                    args[1].parse().map_err(|_| {
+                        CedError::CommandError(format!(
+                                "Given value \"{}\" should be a valid boolean value. ( has_header )",
+                                args[1]
+                        ))
+                    })?,
+                    line_ending
+                )?
+            },
         }
         self.log(&format!("File \"{}\" imported\n", &args[0]))?;
         Ok(())
@@ -870,7 +879,7 @@ impl Processor {
         }
 
         if viewer.len() == 0 {
-            self.print_with_numbers()?;
+            self.print_virtual_data()?;
         } else {
             let csv = self.get_data_as_text()?;
             self.print_with_viewer(csv, &viewer)?;
@@ -930,9 +939,10 @@ impl Processor {
                 "Print-row needs row number"
             )));
         }
-        let row = self.get_row(args[0].parse::<usize>().map_err(|_| {
+        let row_index = args[0].parse::<usize>().map_err(|_| {
             CedError::CommandError("You need to valid number as row number".to_string())
-        })?)?;
+        })?;
+        let row = self.get_row(row_index)?;
 
         if let None = row {
             return Err(CedError::CommandError(format!(
@@ -941,17 +951,19 @@ impl Processor {
         }
         let row = row.unwrap().to_string(&self.get_page_data()?.columns)? + "\n";
 
-        let mut viewer = vec![];
+        let viewer : Vec<_>;
         // Use given command
         // or use environment variable
         // External command has higher priority
         if args.len() >= 2 {
             viewer = args[1..].to_vec();
+            subprocess(&viewer, Some(row))
         } else if let Ok(var) = std::env::var("CED_VIEWER") {
             viewer = var.split_whitespace().map(|s| s.to_string()).collect();
+            subprocess(&viewer, Some(row))
+        } else {
+            self.print_virtual_data_row(row_index, false)
         }
-
-        subprocess(&viewer, Some(row))
     }
 
     fn print_column(&mut self, args: &Vec<String>) -> CedResult<()> {
@@ -994,7 +1006,56 @@ impl Processor {
         subprocess(&viewer.to_vec(), Some(csv))
     }
 
-    fn print_with_numbers(&mut self) -> CedResult<()> {
+    fn print_virtual_data_row(&self, row_index : usize, include_header: bool) -> CedResult<()> {
+        let page = self.get_page_data()?;
+        // Empty csv value, return early
+        if page.get_row_count() == 0 {
+            utils::write_to_stdout(": CSV is empty :\n")?;
+            return Ok(());
+        }
+
+        if page.get_row_count() <= row_index {
+            utils::write_to_stdout(": Given row index is not available :")?;
+            return Ok(());
+        }
+
+        let digits_count = page.get_row_count().to_string().len();
+        if include_header{
+            // 0 length csv is panicking error at this moment, thus safe to unwrap
+            let header_with_number = format!(
+                "{: ^digits_count$}| {}\n",
+                "H ",
+                page.columns
+                .iter()
+                .enumerate()
+                .map(|(i, col)| format!("[{}]:{}", i, col.name))
+                .collect::<Vec<String>>()
+                .join("")
+            );
+            utils::write_to_stdout(&header_with_number)?;
+        }
+
+        let row = &page.rows[row_index]; // It is safe to index an array
+        let row_string = page
+            .columns
+            .iter()
+            .enumerate()
+            .map(|(i, col)| {
+                let cell = row
+                    .get_cell_value(&col.name)
+                    .unwrap_or(&Value::Text(String::new()))
+                    .to_string();
+                format!("[{}]:{}", i, cell)
+            })
+            .collect::<Vec<_>>()
+            .join("");
+        utils::write_to_stdout(&format!("{: ^digits_count$} | {}\n", row_index, row_string))?;
+
+        Ok(())
+    }
+
+    /// Print virtual data to console
+    fn print_virtual_data(&self) -> CedResult<()> {
         let page = self.get_page_data()?;
         // Empty csv value, return early
         if page.get_row_count() == 0 {
@@ -1005,8 +1066,8 @@ impl Processor {
         let digits_count = page.get_row_count().to_string().len();
         // 0 length csv is panicking error at this moment, thus safe to unwrap
         let header_with_number = format!(
-            "{: ^digits_count$}| {}\n",
-            "H ",
+            "{: <digits_count$} | {}\n",
+            "H",
             page.columns
                 .iter()
                 .enumerate()
@@ -1030,7 +1091,7 @@ impl Processor {
                 })
                 .collect::<Vec<_>>()
                 .join("");
-            utils::write_to_stdout(&format!("{: ^digits_count$} | {}\n", index, row_string))?;
+            utils::write_to_stdout(&format!("{: <digits_count$} | {}\n", index, row_string))?;
         }
         Ok(())
     }
