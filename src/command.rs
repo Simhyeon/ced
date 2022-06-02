@@ -766,7 +766,7 @@ impl Processor {
             1 => self.import_from_file(Path::new(&args[0]), true, None)?,
             _ => {
                 // Optional line ending configuration
-                let mut line_ending = None; 
+                let mut line_ending = None;
                 if args.len() > 2 && &args[2].to_lowercase() == "cr" {
                     line_ending = Some('\r');
                 }
@@ -775,13 +775,13 @@ impl Processor {
                     Path::new(&args[0]),
                     args[1].parse().map_err(|_| {
                         CedError::CommandError(format!(
-                                "Given value \"{}\" should be a valid boolean value. ( has_header )",
-                                args[1]
+                            "Given value \"{}\" should be a valid boolean value. ( has_header )",
+                            args[1]
                         ))
                     })?,
-                    line_ending
+                    line_ending,
                 )?
-            },
+            }
         }
         self.log(&format!("File \"{}\" imported\n", &args[0]))?;
         Ok(())
@@ -951,7 +951,7 @@ impl Processor {
         }
         let row = row.unwrap().to_string(&self.get_page_data()?.columns)? + "\n";
 
-        let viewer : Vec<_>;
+        let viewer: Vec<_>;
         // Use given command
         // or use environment variable
         // External command has higher priority
@@ -1006,7 +1006,7 @@ impl Processor {
         subprocess(&viewer.to_vec(), Some(csv))
     }
 
-    fn print_virtual_data_row(&self, row_index : usize, include_header: bool) -> CedResult<()> {
+    fn print_virtual_data_row(&self, row_index: usize, include_header: bool) -> CedResult<()> {
         let page = self.get_page_data()?;
         // Empty csv value, return early
         if page.get_row_count() == 0 {
@@ -1020,17 +1020,17 @@ impl Processor {
         }
 
         let digits_count = page.get_row_count().to_string().len();
-        if include_header{
+        if include_header {
             // 0 length csv is panicking error at this moment, thus safe to unwrap
             let header_with_number = format!(
                 "{: ^digits_count$}| {}\n",
                 "H ",
                 page.columns
-                .iter()
-                .enumerate()
-                .map(|(i, col)| format!("[{}]:{}", i, col.name))
-                .collect::<Vec<String>>()
-                .join("")
+                    .iter()
+                    .enumerate()
+                    .map(|(i, col)| format!("[{}]:{}", i, col.name))
+                    .collect::<Vec<String>>()
+                    .join("")
             );
             utils::write_to_stdout(&header_with_number)?;
         }

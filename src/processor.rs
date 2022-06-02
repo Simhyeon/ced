@@ -63,7 +63,13 @@ impl Processor {
     }
 
     /// Add new page
-    pub(crate) fn add_page(&mut self, page: &str, data: &str, has_header: bool, line_ending: Option<char>) -> CedResult<()> {
+    pub(crate) fn add_page(
+        &mut self,
+        page: &str,
+        data: &str,
+        has_header: bool,
+        line_ending: Option<char>,
+    ) -> CedResult<()> {
         if self.pages.contains_key(page) {
             return Err(CedError::InvalidPageOperation(format!(
                 "\"{}\" already exists",
@@ -135,14 +141,24 @@ impl Processor {
         Ok(())
     }
 
-    pub fn import_from_file(&mut self, path: impl AsRef<Path>, has_header: bool, line_ending: Option<char>) -> CedResult<()> {
+    pub fn import_from_file(
+        &mut self,
+        path: impl AsRef<Path>,
+        has_header: bool,
+        line_ending: Option<char>,
+    ) -> CedResult<()> {
         let content = std::fs::read_to_string(&path).map_err(|err| {
             CedError::io_error(
                 err,
                 &format!("Failed to import file \"{}\"", path.as_ref().display()),
             )
         })?;
-        self.add_page(&path.as_ref().display().to_string(), &content, has_header, line_ending)?;
+        self.add_page(
+            &path.as_ref().display().to_string(),
+            &content,
+            has_header,
+            line_ending,
+        )?;
         self.file.replace(path.as_ref().to_owned());
         Ok(())
     }
