@@ -27,7 +27,7 @@ pub fn start_main_loop() -> CedResult<()> {
                     if let Some(ext) = std::path::Path::new(&item.option).extension() {
                         if ext == "ced" {
                             execute.replace(item.option.clone());
-                            command_exit = true; 
+                            command_exit = true;
                             continue;
                         }
                     }

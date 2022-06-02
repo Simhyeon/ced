@@ -541,7 +541,7 @@ impl Processor {
     fn check_no_loop(&self) -> CedResult<()> {
         if self.no_loop {
             return Err(CedError::CommandError(format!(
-                        "Interactive loop is restricted. Breaking..."
+                "Interactive loop is restricted. Breaking..."
             )));
         }
         Ok(())

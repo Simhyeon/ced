@@ -146,7 +146,7 @@ pub(crate) fn is_valid_csv(value: &str) -> bool {
     }
 }
 
-pub fn tokens_with_quote(source : &str) -> Vec<String> {
+pub fn tokens_with_quote(source: &str) -> Vec<String> {
     let mut tokens = vec![];
     let mut on_quote = false;
     let mut previous = ' ';
@@ -170,7 +170,7 @@ pub fn tokens_with_quote(source : &str) -> Vec<String> {
             ' ' => {
                 if !on_quote {
                     // If previous is also blank. skip
-                    if previous == ' '  {
+                    if previous == ' ' {
                         continue;
                     }
                     let flushed = std::mem::replace(&mut chunk, String::new());
