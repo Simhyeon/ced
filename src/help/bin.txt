@@ -1,0 +1,28 @@
+Ced, 0.1.7
+
+Ced is a csv editor interface.
+
+** Program option **
+
+<FILE>
+	File to import. File is given as argument not an flag option.
+
+--version, -v
+	Print version info.
+
+--help, -h
+	Print help message
+
+--command, -c <Command String>
+	Execute given commands without entering shell mode. Each commands can be
+	separated with semi colon(;).
+
+--confirm, -C
+	Confirm when command triggered write option.
+
+--schema, -s <SCHEMA_FILE>
+	Import schema file. This sets force update by default.
+
+--nolog, -n
+	Do not print logs
+
