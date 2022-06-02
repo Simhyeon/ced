@@ -10,8 +10,6 @@ homepage = "https://github.com/simhyeon/ced"
 repository = "https://github.com/simhyeon/ced"
 readme = "README.md"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
 path="src/lib.rs"
 
