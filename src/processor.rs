@@ -32,6 +32,8 @@ pub struct Processor {
     pub(crate) print_logs: bool,
     #[cfg(feature = "cli")]
     preset: Preset,
+    #[cfg(feature = "cli")]
+    pub(crate) no_loop: bool,
 }
 
 impl Processor {
@@ -43,6 +45,8 @@ impl Processor {
             print_logs: true,
             #[cfg(feature = "cli")]
             preset: Preset::empty(),
+            #[cfg(feature = "cli")]
+            no_loop: false,
         }
     }
 
