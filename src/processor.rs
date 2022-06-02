@@ -63,7 +63,7 @@ impl Processor {
     }
 
     /// Add new page
-    pub(crate) fn add_page(&mut self, page: &str, data: &str, has_header: bool) -> CedResult<()> {
+    pub(crate) fn add_page(&mut self, page: &str, data: &str, has_header: bool, line_ending: Option<char>) -> CedResult<()> {
         if self.pages.contains_key(page) {
             return Err(CedError::InvalidPageOperation(format!(
                 "\"{}\" already exists",
@@ -77,6 +77,7 @@ impl Processor {
                 }
             }
             let csv_data = dcsv::Reader::new()
+                .use_line_delimiter(line_ending.unwrap_or('\n'))
                 .has_header(has_header)
                 .ignore_empty_row(ignore_empty_row)
                 .read_from_stream(data.as_bytes())?;
@@ -134,14 +135,14 @@ impl Processor {
         Ok(())
     }
 
-    pub fn import_from_file(&mut self, path: impl AsRef<Path>, has_header: bool) -> CedResult<()> {
+    pub fn import_from_file(&mut self, path: impl AsRef<Path>, has_header: bool, line_ending: Option<char>) -> CedResult<()> {
         let content = std::fs::read_to_string(&path).map_err(|err| {
             CedError::io_error(
                 err,
                 &format!("Failed to import file \"{}\"", path.as_ref().display()),
             )
         })?;
-        self.add_page(&path.as_ref().display().to_string(), &content, has_header)?;
+        self.add_page(&path.as_ref().display().to_string(), &content, has_header, line_ending)?;
         self.file.replace(path.as_ref().to_owned());
         Ok(())
     }
