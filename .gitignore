@@ -4,3 +4,4 @@ schema.csv
 preset.csv
 backup
 *.csv
+*.ced
