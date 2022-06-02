@@ -1,7 +1,8 @@
 ** Program option **
 
-<FILE>
-	File to import. File is given as argument not an flag option.
+<FILE> <IMPORT_OPTIONS>
+	File to import. File is given as argument not an flag option. Optional
+	arguments are sent as import options. Refer command 'import' for options.
 
 --version, -v
 	Print version info.

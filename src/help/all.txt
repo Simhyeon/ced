@@ -4,8 +4,9 @@ Ced is a csv editor interface.
 
 ** Program option **
 
-<FILE>
-	File to import. File is given as argument not an flag option.
+<FILE> <IMPORT_OPTIONS>
+	File to import. File is given as argument not an flag option. Optional
+	arguments are sent as import options. Refer command 'import' for options.
 
 --version, -v
 	Print version info.
@@ -47,9 +48,16 @@ import, i <HAS_HEADER : boolean>{Optional} <LINE_ENDING>{Optional}
 		import file_name.csv false
 		import mac_file.csv true CR
 
+execute, ex <FILE : String>
+	Execute file's content as command sequence. 
+
+	e.g.)
+		execute commands.ced
+
 export, x <FILE : String>
 	Export ced's virtual data into a file. This will create a new file if given
 	file doesn't exit. Existing content of the file will be truncated. 
+
 	e.g.)
 		export file_name
 

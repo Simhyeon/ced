@@ -3,8 +3,9 @@ edit, e <COORDINATE: (usize,usize)> <VALUE: string>
 	name of the column.
 
 	**Syntax Caveat**
-	- Coordinate should not have a whitesapce in between.
+	- Coordinate is separated by comma
 	- surplus whitespaces will be merged to a single whitespace.
+	- Use quote to include literal white space in between
 
 	e.g.)
 		e 0,2 hello world

@@ -1,0 +1,6 @@
+execute, ex <FILE : String>
+	Execute file's content as command sequence. 
+
+	e.g.)
+		execute commands.ced
+
