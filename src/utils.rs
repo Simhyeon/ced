@@ -29,6 +29,7 @@ pub(crate) fn write_to_stderr(src: &str) -> CedResult<()> {
     Ok(())
 }
 
+#[cfg(feature = "cli")]
 pub(crate) fn read_stdin_until_eof(strip_newline: bool, input: &mut String) -> CedResult<usize> {
     let read_byte = std::io::stdin()
         .read_line(input)
@@ -143,4 +144,47 @@ pub(crate) fn is_valid_csv(value: &str) -> bool {
     } else {
         true
     }
+}
+
+pub fn tokens_with_quote(source : &str) -> Vec<String> {
+    let mut tokens = vec![];
+    let mut on_quote = false;
+    let mut previous = ' ';
+    let mut chunk = String::new();
+    let mut iter = source.chars().peekable();
+    while let Some(ch) = iter.next() {
+        match ch {
+            '\'' => {
+                // Add literal double quote if previous was same character
+                if previous == '\'' {
+                    previous = ' '; // Reset previous
+                } else {
+                    if let Some('\'') = iter.peek() {
+                    } else {
+                        on_quote = !on_quote;
+                        continue;
+                    }
+                    previous = ch;
+                }
+            }
+            ' ' => {
+                if !on_quote {
+                    // If previous is also blank. skip
+                    if previous == ' '  {
+                        continue;
+                    }
+                    let flushed = std::mem::replace(&mut chunk, String::new());
+                    tokens.push(flushed);
+                    previous = ch;
+                    continue;
+                }
+            }
+            _ => previous = ch,
+        }
+        chunk.push(ch);
+    }
+    if !chunk.is_empty() {
+        tokens.push(chunk);
+    }
+    tokens
 }
