@@ -7,3 +7,4 @@ limit, l <Attributes: Array>{Optional}
 	e.g)
 		limit 
 		limit column,type,default,variant,pattern
+
