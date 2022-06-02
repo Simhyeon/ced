@@ -110,8 +110,8 @@ impl Default for Command {
 
 impl Command {
     pub fn from_str(src: &str) -> CedResult<Self> {
-        let src: Vec<&str> = src.split_whitespace().collect();
-        let command = src[0];
+        let src: Vec<String> = utils::tokens_with_quote(src);
+        let command = &src[0];
         let command_type = CommandType::from_str(command);
         Ok(Self {
             command_type,
@@ -318,6 +318,7 @@ impl Processor {
             }
             #[cfg(feature = "cli")]
             1 => {
+                self.check_no_loop()?;
                 // Only row
                 row_number = args[0].parse::<usize>().map_err(|_| {
                     CedError::CommandError(format!("\"{}\" is not a valid row number", args[0]))
@@ -349,6 +350,7 @@ impl Processor {
     /// Edit multiple rows
     #[cfg(feature = "cli")]
     fn edit_rows_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        self.check_no_loop()?;
         let len = args.len();
         let mut start_index = 0;
         let mut end_index = self.get_row_count()?.max(1) - 1;
@@ -461,6 +463,7 @@ impl Processor {
         match len {
             #[cfg(feature = "cli")]
             0 => {
+                self.check_no_loop()?;
                 // No row number
                 row_number = self.get_row_count()?;
                 if row_number > self.get_row_count()? {
@@ -478,6 +481,7 @@ impl Processor {
             }
             #[cfg(feature = "cli")]
             1 => {
+                self.check_no_loop()?;
                 // Only row number
                 row_number = args[0].parse::<usize>().map_err(|_| {
                     CedError::CommandError(format!("\"{}\" is not a valid row number", args[0]))
@@ -531,6 +535,16 @@ impl Processor {
             }
         }
         false
+    }
+
+    #[cfg(feature = "cli")]
+    fn check_no_loop(&self) -> CedResult<()> {
+        if self.no_loop {
+            return Err(CedError::CommandError(format!(
+                        "Interactive loop is restricted. Breaking..."
+            )));
+        }
+        Ok(())
     }
 
     #[cfg(feature = "cli")]
@@ -875,7 +889,7 @@ impl Processor {
         if args.len() >= 1 {
             viewer = args[0..].to_vec();
         } else if let Ok(var) = std::env::var("CED_VIEWER") {
-            viewer = var.split_whitespace().map(|s| s.to_string()).collect();
+            viewer = utils::tokens_with_quote(&var);
         }
 
         if viewer.len() == 0 {
