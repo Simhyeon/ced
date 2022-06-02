@@ -12,6 +12,7 @@ pub fn start_main_loop() -> CedResult<()> {
     let mut command_exit = false;
     let mut write_confirm = false;
     let mut import = None;
+    let mut execute = None;
     let mut schema = None;
     let mut command = None;
 
@@ -22,6 +23,14 @@ pub fn start_main_loop() -> CedResult<()> {
             FlagType::Confirm => write_confirm = true,
             FlagType::Argument => {
                 if !item.option.is_empty() {
+                    // If given file is .ced format execute it
+                    if let Some(ext) = std::path::Path::new(&item.option).extension() {
+                        if ext == "ced" {
+                            execute.replace(item.option.clone());
+                            command_exit = true; 
+                            continue;
+                        }
+                    }
                     import.replace(item.option.clone());
                 }
             }
@@ -58,6 +67,9 @@ pub fn start_main_loop() -> CedResult<()> {
     // Add preset
     command_loop.processor.configure_preset(true)?;
 
+    if let Some(execute) = execute.as_ref() {
+        feed_execute(execute, &mut command_loop)?;
+    }
     if let Some(import) = import.as_ref() {
         feed_import(import, &mut command_loop)?;
     }
@@ -76,6 +88,19 @@ pub fn start_main_loop() -> CedResult<()> {
         .start_loop()
         .err()
         .map(|err| println!("{}", err));
+    Ok(())
+}
+
+fn feed_execute(file: &str, command_loop: &mut CommandLoop) -> CedResult<()> {
+    command_loop.toggle_no_loop(true);
+    if let Err(err) =
+        command_loop.feed_command(&Command::from_str(&format!("execute {}", file))?, true)
+    {
+        eprintln!("{}", err);
+        command_loop.toggle_no_loop(false); // Return status, might be helpful
+        return Ok(());
+    }
+    command_loop.toggle_no_loop(false);
     Ok(())
 }
 
@@ -136,6 +161,10 @@ impl CommandLoop {
             history: CommandHistory::new(),
             processor: Processor::new(),
         }
+    }
+
+    pub fn toggle_no_loop(&mut self, tv: bool) {
+        self.processor.no_loop = tv;
     }
 
     pub fn no_log(&mut self) {
