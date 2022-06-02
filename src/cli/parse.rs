@@ -71,7 +71,6 @@ impl Parser {
             "--schema" | "-s" => Flag::schema(),
             "--confirm" | "-C" => Flag::confirm(),
             "--nolog" | "-n" => Flag::nolog(),
-            "--line-end" | "-l" => Flag::line_end(),
             _ => Flag::empty(),
         }
     }
@@ -157,15 +156,6 @@ impl Flag {
             early_exit: true,
         }
     }
-
-    pub fn line_end() -> Self {
-        Self {
-            ftype: FlagType::LineEnd,
-            need_option: true,
-            option: String::new(),
-            early_exit: false,
-        }
-    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -177,6 +167,5 @@ pub enum FlagType {
     Schema,
     Version,
     NoLog,
-    LineEnd,
     None,
 }

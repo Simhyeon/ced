@@ -1,7 +1,12 @@
 use crate::utils;
 use crate::CommandType;
 
+const BINARY_HELP: &'static str = include_str!("../help/bin.txt");
 const HELP_TEXT: &'static str = include_str!("../help/all.txt");
+
+pub fn print_binary_help_text() {
+    utils::write_to_stdout(BINARY_HELP).expect("Failed to print to terminal");
+}
 
 pub fn print_help_text() {
     utils::write_to_stdout(HELP_TEXT).expect("Failed to print to terminal");

@@ -18,7 +18,7 @@ pub fn start_main_loop() -> CedResult<()> {
     for item in flags.iter() {
         match item.ftype {
             FlagType::Version => help::print_version(),
-            FlagType::Help => help::print_help_text(),
+            FlagType::Help => help::print_binary_help_text(),
             FlagType::Confirm => write_confirm = true,
             FlagType::Argument => {
                 if !item.option.is_empty() {
@@ -43,11 +43,6 @@ pub fn start_main_loop() -> CedResult<()> {
             }
             FlagType::NoLog => {
                 command_loop.no_log();
-            }
-            // TODO
-            // Not implemented
-            FlagType::LineEnd => {
-                // NOT YET...
             }
             FlagType::None => (),
         }
@@ -231,7 +226,7 @@ impl CommandLoop {
     }
 
     fn add_empty_page(&mut self) -> CedResult<()> {
-        self.processor.add_page("\\EMPTY", "", false)?;
+        self.processor.add_page("\\EMPTY", "", false, None)?;
         Ok(())
     }
 }
