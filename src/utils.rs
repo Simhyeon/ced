@@ -154,17 +154,24 @@ pub fn tokens_with_quote(source: &str) -> Vec<String> {
     let mut iter = source.chars().peekable();
     while let Some(ch) = iter.next() {
         match ch {
-            '\'' => {
-                // Add literal double quote if previous was same character
-                if previous == '\'' {
+            // Escape character should not bed added
+            '\\' => {
+                if previous == '\\' {
                     previous = ' '; // Reset previous
                 } else {
-                    if let Some('\'') = iter.peek() {
-                    } else {
-                        on_quote = !on_quote;
-                        continue;
-                    }
+                    on_quote = !on_quote;
                     previous = ch;
+                    continue;
+                }
+            }
+            '\'' => {
+                // Add literal quote if previous was escape character
+                if previous == '\\' {
+                    previous = ' '; // Reset previous
+                } else {
+                    on_quote = !on_quote;
+                    previous = ch;
+                    continue;
                 }
             }
             ' ' => {
