@@ -1,21 +1,15 @@
 ### TODO
 
-* [X] Improved default print formatting
-* [x] Fixed empty row error
+* [ ] Check limiter preset
 * [ ] Create test.rs for easier testing
 
 - In built cli's interface should be simple and easy but also lightweight and fast.
 - No bloat: dependencies are better when smallest
 * [ ] Library usage ergonomic binding
 
-* [x] Limiter respects csv convention now
-* [x] Limiter preset
-	* [x] Include this in command\_loop
-
 -> Hard
 
 * [ ] Command read from stdin by default ( This is possible with simple read\_line solution )
-* [ ] Print with numbers lines with bigger number has strange artifact, which has low priority but yeah anyway
 * [ ] Automatic build tests
 * [ ] Get + Set selection api ( Consider if this is necessary, not mandate but eaiser for end users )
 * [ ] Make test script -> Ok... this is quite cumbersome
@@ -23,6 +17,12 @@
 
 ### SEMI-DONE
 
+* [-] Use different character when cell value is empty
+* [-] Enable super pretty print with columns' current longest width value. ::
+-> This might be helpful, but there are many good tools that can be better. To
+follow unix philosophy I'd rather let it sink
+* [-] Read file as trimmed option. -> Read value as trimmed form. :: -> This is
+not hard... but is it really necessary for ced? Possibly not
 * [-] Import as page name support? Hmm... This may not be necessary though
 * [-] ~~Floating point type~~ : Not worth the hassle
 * [x] Document CED\_HISTORY\_CAPACITY
@@ -123,3 +123,21 @@ Make it swappable so that command pattern can be used later.
 * [x] Now arguments are order-insensitive
 * [x] Disable log output
 * [x] Disable loop variant for non cli build
+
+* [x] Better print with numbers function
+* [X] Improved default print formatting
+* [x] Fixed empty row error
+* [x] Print-row is broken... because it was only utilizing CED\_VIEWER and didn't print anything by default
+* [x] Fix unlined header
+* [x] Maybe help but shorter version? Also help but for binary only option maybe
+* [x] Line ending import option ( CR )
+* [x] Disable loop on execute argument by default.
+* [x] Made argument parsing much more intuitive -> more like sh syntax
+* [x] Rename-column should not allow number name : Dcsv problem.
+* [x] Fixed wrong limiter behaviour
+* [x] Bettered documentation
+
+* [x] Limiter respects csv convention now
+* [x] Limiter preset
+	* [x] Include this in command\_loop
+

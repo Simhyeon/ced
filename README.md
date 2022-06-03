@@ -5,6 +5,8 @@ Ths is a csv editor and a backend for other frontends.
 Ced is not a fully featured editor, but more likely an "ed" for csv. Ced simply
 prevents you from adding surplus column or invalid data type. 
 
+[Changes](./docs/change.md)
+
 ### Install
 
 ```bash
@@ -33,33 +35,31 @@ ced --schema schema.csv data.csv --command 'add-row 1 100,20;write'
 
 # Start ced
 # Optionaly with initial import
-# Redundant arguments are sent as import options.
 ced
 ced file.csv
-ced no_header_file.csv false
 
 # Execute script
 # argument with .ced extension will be interpretted as execution script
 # In this case, loop variants are restricted
 ced script.ced
 
+# Shell commands
 # Get help
 >> help
 
-# Import file
+# Import a file
 >> import file_name.csv
 
-# Import schema file
->> schema ced_schema.csv
+# Import a schema file. Second argument determines overriding.
+>> schema file_name true
 
-# Print csv data optionally with viewer command
-# Set CED_VIEWER for default print viewer
-# Custom viwer will work for windows platform
+# Print csv data optionally with a viewer command
+# Set CED_VIEWER to set default print viewer
 >> print
 >> print tidy-viwer
 
-# Append new row to last
-# Type comma to exit add loop
+# Append a new row to last
+# Type a comma to exit loop
 >> add-row 
 First Header = .. <USER_INPUT>
 Second Header = .. <USER_INPUT>
@@ -67,24 +67,21 @@ Second Header = .. <USER_INPUT>
 # Edit a given row
 >> edit-row <ROW_NUMBER>
 
-# Set limiter for a column with interactive shell
+# Set a limiter for a column with interactive shell
 >> limit
 
-# Import schema file with force update
->> schema file_name true
-
-# Export to file
+# Export to a file
 >> export file_name.csv
 
-# Overwrite to the imported file
+# Overwrite to a source file
 >> write
 
-# Undo previous operation
+# Undo a previous operation
 # History capacity is 16 by default
 # You can override it with CED_HISTORY_CAPACITY
 >> undo
 
-# Redo previous undo
+# Redo a previous undo
 >> redo
 ```
 
