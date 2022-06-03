@@ -932,7 +932,7 @@ impl Processor {
         }
 
         match self.get_page_data()?.get_cell(x, y)? {
-            Some(cell) => match print_mode {
+            Some(cell) => match print_mode.to_lowercase().as_str() {
                 "v" | "verbose" => utils::write_to_stdout(&format!("{:?}\n", cell))?,
                 "d" | "debug" => {
                     let col = self.get_column(y)?.ok_or(CedError::OutOfRangeError)?;
@@ -995,7 +995,7 @@ impl Processor {
         if let Some(col) = self.get_page_data()?.try_get_column_index(&args[0]) {
             if col < self.get_page_data()?.get_column_count() {
                 let col = self.get_column(col)?.ok_or(CedError::OutOfRangeError)?;
-                match print_mode {
+                match print_mode.to_lowercase().as_str() {
                     "debug" | "d" => utils::write_to_stdout(&format!("{:#?}\n", col))?,
                     "verbose" | "v" => utils::write_to_stdout(&format!(
                         "Column = \nName: {}\nType: {}\n---\nLimiter =\n{}",
@@ -1116,7 +1116,7 @@ impl Processor {
         } else {
             if args.len() != 3 {
                 return Err(CedError::CommandError(format!(
-                            "Insufficient arguments for limit"
+                    "Insufficient arguments for limit"
                 )));
             }
             let column_name = &args[0];
