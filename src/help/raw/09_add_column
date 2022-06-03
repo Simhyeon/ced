@@ -2,7 +2,7 @@ add-column, ac <COLUMN_NAME: string>
                <INDEX: usize>{Optional} 
 			   <TYPE: text|number>{Optional}
 			   <PLACEHOLDER: String>{Optional}
-	Add new column. Placeholder should accord with given type.
+	Add a new column. Placeholder should accord with given type.
 
 	e.g)
 		ac address

@@ -1,8 +1,8 @@
 print-cell, pc <COORD: usize,column> <MODE : String>{Optional}
-	Print cell's data. There are modes for printing which are
-		- d, debug
+	Print a cell's data. There are modes for printing which are
+		- simple ( default )
 		- v, verbose
-	**Modes are case sensitive.**
+		- d, debug
 
 	e.g)
 		print-cell 0,count

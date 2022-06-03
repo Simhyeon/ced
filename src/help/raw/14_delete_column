@@ -1,5 +1,5 @@
-delete-column, dc <COLUMN: any>
-	Delete given column. Column can be either name or index.
+delete-column, dc <COLUMN: column>
+	Delete a given column.
 
 	e.g)
 		dc 2

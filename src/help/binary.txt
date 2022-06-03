@@ -1,25 +1,28 @@
 ** Program option **
 
-<FILE> <IMPORT_OPTIONS>
-	File to import. File is given as argument not an flag option. Optional
-	arguments are sent as import options. Refer command 'import' for options.
+<FILE | SCRIPT>
+	FILE to import. FILE is given as an argument not an flag option.
+
+	If a given file ends with .ced extension the file will be executed as
+	a script not csv data. 
 
 --version, -v
 	Print version info.
 
 --help, -h
-	Print help message
+	Print a help message
 
 --command, -c <Command String>
-	Execute given commands without entering shell mode. Each commands can be
-	separated with semi colon(;).
+	Execute given commands without entering a shell mode. Each command can be
+	separated by a semi colon(;).
 
 --confirm, -C
-	Confirm when command triggered write option.
+	Confirm when command triggers write option.
 
 --schema, -s <SCHEMA_FILE>
-	Import schema file. This sets force update by default.
+	Import a schema file. This sets force option by default. Use shema inside
+	a command for detailed usage.
 
 --nolog, -n
-	Do not print logs
+	Do not print logs of commands.
 

@@ -1,6 +1,6 @@
-rename-column, rc <COLUMN: any> <NEW_NAME: string>
-	Rename a given column'name to new a name. Column can be either a name or an
-	index.
+rename-column, rc <COLUMN: column> <NEW_NAME: string>
+	Rename a given column's name to a new name. New name cannot be exsiting
+	name or number.
 
 	e.g)
 		rc count index

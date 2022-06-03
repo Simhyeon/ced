@@ -1,7 +1,10 @@
 write, w <CACHE : bool>{Optional, Default=true}
-	Write ced's virtual data into a real file. Previous file's content will be
-	cached in temporary file. You can disable this behaviour with optional
-	argument.
+	Write ced's virtual data into a source file. Previous file's content will
+	be cached in temporary directory. You can disable this behaviour with
+	optional argument. 
+
+	Temporary directory path is retrieved with rust standard library's temp_dir
+	method and depend on platforms.
 
 	e.g.)
 		write true

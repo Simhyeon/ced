@@ -9,5 +9,5 @@ edit, e <COORDINATE: (usize,usize)> <VALUE: string>
 
 	e.g.)
 		e 0,2 hello world
-		e 4,address rhode island
+		e 4,address 'rhode    island'
 

@@ -1,7 +1,7 @@
 edit-row, er <INDEX: usize> <Values: Array>{Delimiter=comma}
-	Edit row with given values. Edit-row without second argument will trigger
-	interactive edit mode. The default value of interactive mode is original
-	cell's value.
+	Edit a row with given values. Edit-row without a second argument will
+	trigger interactive edit mode. The default value of interactive mode is
+	original cell's value.
 
 	e.g)
 		er 2

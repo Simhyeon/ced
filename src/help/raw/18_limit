@@ -1,10 +1,7 @@
-limit, l <Attributes: Array>{Optional}
+limit, l <COLUMN: column>{Optional} <Attributes: Array> <OVERRIDE: bool>
 	Set limiter for column with interactive prompt. You can directly pass
 	limiter attributes if you want.
 
-	This operation override default value if row value doesn't satisfy limiter.
-
 	e.g)
 		limit 
-		limit column,type,default,variant,pattern
-
+		limit column 'type,default,variant,pattern' true

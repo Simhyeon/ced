@@ -1,5 +1,5 @@
 add-row, ar <Index: usize>{Optional} <Row: array>{Optional,Delimiter=comma}
-	Add new row into a given index. Empty arguments will trigger interactive
+	Add a new row into a given index. Empty arguments will trigger interactive
 	loop for data input.
 
 	e.g)

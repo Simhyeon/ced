@@ -4,4 +4,5 @@ create, c <COLUMN_NAMES>{Delimiter=space}
 	e.g)
 		create a b c d e 
 		create id address name
+		create ' id ' ' "HED" ' 'WOW   '
 

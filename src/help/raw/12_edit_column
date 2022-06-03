@@ -1,5 +1,5 @@
-edit-column, ec <COLUMN: any> <Value: String>
-	Edit all columns with given value. Column can be either name or index.
+edit-column, ec <COLUMN: column> <Value: String>
+	Edit column's value with given value.
 
 	e.g)
 		ec 1
