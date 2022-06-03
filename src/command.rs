@@ -1114,11 +1114,21 @@ impl Processor {
         if args.len() == 0 {
             self.add_limiter_prompt()?;
         } else {
+            if args.len() != 3 {
+                return Err(CedError::CommandError(format!(
+                            "Insufficient arguments for limit"
+                )));
+            }
             let column_name = &args[0];
-            let source = args[1..].to_vec().join(" ");
-            let limiter = ValueLimiter::from_line(&dcsv::utils::csv_row_to_vector(&source, None))?;
+            let source = args[1].split(',').collect();
+            let panic = !args[2].parse::<bool>().map_err(|_| {
+                CedError::CommandError(
+                    "You need to feed boolean value for the force value".to_string(),
+                )
+            })?;
+            let limiter = ValueLimiter::from_line(&source)?;
 
-            self.set_limiter(column_name, &limiter, true)?;
+            self.set_limiter(column_name, &limiter, panic)?;
             self.log(&format!("Limited column \"{}\"", column_name))?;
         }
         Ok(())
