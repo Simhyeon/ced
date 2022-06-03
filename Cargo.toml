@@ -21,4 +21,4 @@ path="src/cli/bin.rs"
 cli = []
 
 [dependencies]
-dcsv = { version = "0.1.2", path = "../dcsv"}
+dcsv = { version = "0.1.2"}
