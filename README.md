@@ -23,16 +23,6 @@ ced --version
 # Print help
 ced --help
 
-# Import schema and import data file.
-# Execute a given command without opening an interactive shell
-ced --schema schema.csv data.csv --command 'add-row 1 100,20;write'
-```
-
-**Ced shell command**
-
-```bash
-# Type help in prompt or give --help flag for detailed usage.
-
 # Start ced
 # Optionaly with initial import
 ced
@@ -43,7 +33,16 @@ ced file.csv
 # In this case, loop variants are restricted
 ced script.ced
 
-# Shell commands
+# Import schema and import data file.
+# Execute a given command without opening an interactive shell
+ced --schema schema.csv data.csv --command 'add-row 1 100,20;write'
+```
+
+**Ced shell command**
+
+```bash
+# Type help in prompt or give --help flag for detailed usage.
+
 # Get help
 >> help
 
@@ -84,8 +83,3 @@ Second Header = .. <USER_INPUT>
 # Redo a previous undo
 >> redo
 ```
-
-### Note
-
-Currently CR(Old Mac OS line ending) format is not supported. CRLF and LF
-works. This might change in future releases.
