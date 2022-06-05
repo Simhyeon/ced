@@ -181,7 +181,7 @@ impl Processor {
     /// * cache - whether to backup original file's content into temp directory
     pub fn overwrite_to_file(&self, cache: bool) -> CedResult<bool> {
         if let None = self.file {
-            return Ok(true);
+            return Ok(false);
         }
 
         let file = self.file.as_ref().unwrap();
@@ -193,7 +193,7 @@ impl Processor {
         }
         std::fs::write(file, csv.as_bytes())
             .map_err(|err| CedError::io_error(err, "Failed to overwrite file with content"))?;
-        Ok(false)
+        Ok(true)
     }
 
     pub fn edit_cell(&mut self, x: usize, y: usize, input: &str) -> CedResult<()> {
