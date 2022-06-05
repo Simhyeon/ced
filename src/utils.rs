@@ -34,8 +34,8 @@ pub(crate) fn read_stdin_until_eof(strip_newline: bool, input: &mut String) -> C
     let read_byte = std::io::stdin()
         .read_line(input)
         .map_err(|err| CedError::io_error(err, "Failed to read stdin from source"))?;
-    if strip_newline && input.ends_with("\n") {
-        input.pop();
+    if strip_newline && (input.ends_with("\n") | input.ends_with("\r\n")) {
+        *input = input.trim().to_owned();
     }
     Ok(read_byte)
 }
@@ -45,8 +45,8 @@ pub(crate) fn read_stdin(strip_newline: bool) -> CedResult<String> {
     std::io::stdin()
         .read_line(&mut input)
         .map_err(|err| CedError::io_error(err, "Failed to read stdin from source"))?;
-    if strip_newline && input.ends_with("\n") {
-        input.pop();
+    if strip_newline && (input.ends_with("\n") || input.ends_with("\r\n")) {
+        input = input.trim().to_owned();
     }
     Ok(input)
 }
