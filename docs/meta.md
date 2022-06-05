@@ -1,5 +1,10 @@
 ### TODO
 
+* [ ] Ced behaves very strange in windows paltform.
+	* [ ] Especially after interactive input
+* [ ] Write panic when ced didn't import any file
+	- Add new message 
+	- : No Source file to write. Use export instead : 
 * [ ] Check limiter preset
 * [ ] Create test.rs for easier testing
 
