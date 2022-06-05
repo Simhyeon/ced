@@ -876,6 +876,8 @@ impl Processor {
                 "File overwritten to \"{}\"\n",
                 self.file.as_ref().unwrap().display()
             ))?;
+        } else {
+            self.log(": No source file to write. Use export instead :\n")?;
         }
         Ok(())
     }
@@ -954,13 +956,13 @@ impl Processor {
             )));
         }
         let row_index = args[0].parse::<usize>().map_err(|_| {
-            CedError::CommandError("You need to valid number as row number".to_string())
+            CedError::CommandError("You need to feed a valid number as a row number".to_string())
         })?;
         let row = self.get_row(row_index)?;
 
         if let None = row {
             return Err(CedError::CommandError(format!(
-                "Print-row needs row number"
+                "Row number out of range"
             )));
         }
         let row = row.unwrap().to_string(&self.get_page_data()?.columns)? + "\n";
