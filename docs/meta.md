@@ -1,10 +1,8 @@
 ### TODO
 
-* [ ] Ced behaves very strange in windows paltform.
-	* [ ] Especially after interactive input
-* [ ] Write panic when ced didn't import any file
-	- Add new message 
-	- : No Source file to write. Use export instead : 
+* [x] Ced behaves very strange in windows paltform.
+	- This was because read\_input was not trimming properly
+* [x] Write panics when ced didn't import any file
 * [ ] Check limiter preset
 * [ ] Create test.rs for easier testing
 
