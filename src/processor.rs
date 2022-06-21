@@ -36,6 +36,12 @@ pub struct Processor {
     pub(crate) no_loop: bool,
 }
 
+impl Default for Processor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Processor {
     pub fn new() -> Self {
         Self {
@@ -117,10 +123,12 @@ impl Processor {
     pub(crate) fn get_page_data_mut(&mut self) -> CedResult<&mut VirtualData> {
         self.pages
             .get_mut(self.cursor.as_ref().unwrap())
-            .ok_or(CedError::InvalidPageOperation(format!(
-                "Cannot get page from cursor which is \"{:?}\"",
-                self.cursor
-            )))
+            .ok_or_else(|| {
+                CedError::InvalidPageOperation(format!(
+                    "Cannot get page from cursor which is \"{:?}\"",
+                    self.cursor
+                ))
+            })
     }
 
     /// Try get page data but panic if cursor is empty
@@ -132,10 +140,12 @@ impl Processor {
     pub(crate) fn get_page_data(&self) -> CedResult<&VirtualData> {
         self.pages
             .get(self.cursor.as_ref().unwrap())
-            .ok_or(CedError::InvalidPageOperation(format!(
-                "Cannot get page from cursor which is \"{:?}\"",
-                self.cursor
-            )))
+            .ok_or_else(|| {
+                CedError::InvalidPageOperation(format!(
+                    "Cannot get page from cursor which is \"{:?}\"",
+                    self.cursor
+                ))
+            })
     }
 
     pub(crate) fn log(&self, log: &str) -> CedResult<()> {
@@ -180,7 +190,7 @@ impl Processor {
     ///
     /// * cache - whether to backup original file's content into temp directory
     pub fn overwrite_to_file(&self, cache: bool) -> CedResult<bool> {
-        if let None = self.file {
+        if self.file.is_none() {
             return Ok(false);
         }
 
@@ -221,7 +231,7 @@ impl Processor {
     pub fn set_row_from_string(
         &mut self,
         row_number: usize,
-        input: &Vec<impl AsRef<str>>,
+        input: &[impl AsRef<str>],
     ) -> CedResult<()> {
         self.get_page_data_mut()?.set_row(
             row_number,
@@ -241,7 +251,7 @@ impl Processor {
     pub fn add_row_from_strings(
         &mut self,
         row_number: usize,
-        src: &Vec<impl AsRef<str>>,
+        src: &[impl AsRef<str>],
     ) -> CedResult<()> {
         let values = src
             .iter()
@@ -281,7 +291,7 @@ impl Processor {
     pub fn add_column_array(&mut self, columns: &Vec<impl AsRef<str>>) -> CedResult<()> {
         for col in columns {
             let column_count = self.get_page_data_mut()?.get_column_count();
-            self.add_column(column_count, &col.as_ref(), ValueType::Text, None, None)?;
+            self.add_column(column_count, col.as_ref(), ValueType::Text, None, None)?;
         }
         Ok(())
     }
@@ -315,10 +325,10 @@ impl Processor {
         let mut content = content.lines();
 
         let header = content.next();
-        if let None = header {
-            return Err(CedError::InvalidRowData(format!(
-                "Given file does not have a header"
-            )));
+        if header.is_none() {
+            return Err(CedError::InvalidRowData(
+                "Given file does not have a header".to_string(),
+            ));
         }
 
         let mut row = content.next();
@@ -340,12 +350,9 @@ impl Processor {
         let column = self
             .get_page_data_mut()?
             .try_get_column_index(column)
-            .ok_or(CedError::InvalidColumn(format!(
-                "{} is not a valid column",
-                column
-            )))?;
+            .ok_or_else(|| CedError::InvalidColumn(format!("{} is not a valid column", column)))?;
         self.get_page_data_mut()?
-            .set_limiter(column, &limiter, panic)?;
+            .set_limiter(column, limiter, panic)?;
         Ok(())
     }
 

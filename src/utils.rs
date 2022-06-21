@@ -34,7 +34,7 @@ pub(crate) fn read_stdin_until_eof(strip_newline: bool, input: &mut String) -> C
     let read_byte = std::io::stdin()
         .read_line(input)
         .map_err(|err| CedError::io_error(err, "Failed to read stdin from source"))?;
-    if strip_newline && (input.ends_with("\n") | input.ends_with("\r\n")) {
+    if strip_newline && (input.ends_with('\n') | input.ends_with("\r\n")) {
         *input = input.trim().to_owned();
     }
     Ok(read_byte)
@@ -45,14 +45,14 @@ pub(crate) fn read_stdin(strip_newline: bool) -> CedResult<String> {
     std::io::stdin()
         .read_line(&mut input)
         .map_err(|err| CedError::io_error(err, "Failed to read stdin from source"))?;
-    if strip_newline && (input.ends_with("\n") || input.ends_with("\r\n")) {
+    if strip_newline && (input.ends_with('\n') || input.ends_with("\r\n")) {
         input = input.trim().to_owned();
     }
     Ok(input)
 }
 
 pub(crate) fn subprocess(
-    args: &Vec<impl AsRef<OsStr>>,
+    args: &[impl AsRef<OsStr>],
     process_standard_input: Option<String>,
 ) -> CedResult<()> {
     #[cfg(target_os = "windows")]
@@ -80,9 +80,10 @@ pub(crate) fn subprocess(
             ))
         })?;
 
-    let mut stdin = process.stdin.take().ok_or(CedError::CommandError(
-        "Failed to read from stdin".to_string(),
-    ))?;
+    let mut stdin = process
+        .stdin
+        .take()
+        .ok_or_else(|| CedError::CommandError("Failed to read from stdin".to_string()))?;
 
     if let Some(input) = process_standard_input {
         std::thread::spawn(move || {
@@ -107,7 +108,7 @@ pub(crate) fn subprocess(
     Ok(())
 }
 
-/// Strip double quotes from csv value
+/// Check if given string has valid csv spec
 ///
 /// This will return None if given value doesn't qualify with csv spec
 pub(crate) fn is_valid_csv(value: &str) -> bool {
@@ -139,11 +140,9 @@ pub(crate) fn is_valid_csv(value: &str) -> bool {
             _ => previous = ch,
         }
     }
-    if on_quote {
-        false
-    } else {
-        true
-    }
+
+    // If quote is not finished, then it is invalid
+    !on_quote
 }
 
 pub fn tokens_with_quote(source: &str) -> Vec<String> {
@@ -151,8 +150,8 @@ pub fn tokens_with_quote(source: &str) -> Vec<String> {
     let mut on_quote = false;
     let mut previous = ' ';
     let mut chunk = String::new();
-    let mut iter = source.chars().peekable();
-    while let Some(ch) = iter.next() {
+    let iter = source.chars().peekable();
+    for ch in iter {
         match ch {
             // Escape character should not bed added
             '\\' => {
@@ -180,7 +179,7 @@ pub fn tokens_with_quote(source: &str) -> Vec<String> {
                     if previous == ' ' {
                         continue;
                     }
-                    let flushed = std::mem::replace(&mut chunk, String::new());
+                    let flushed = std::mem::take(&mut chunk);
                     tokens.push(flushed);
                     previous = ch;
                     continue;

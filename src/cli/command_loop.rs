@@ -1,6 +1,7 @@
 use crate::cli::parse::{FlagType, Parser};
 use crate::command::{CommandHistory, CommandType};
 use crate::{cli::help, utils, CedResult, Command, Processor};
+use std::str::FromStr;
 
 pub fn start_main_loop() -> CedResult<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -84,10 +85,11 @@ pub fn start_main_loop() -> CedResult<()> {
         return Ok(());
     }
 
-    command_loop
-        .start_loop()
-        .err()
-        .map(|err| println!("{}", err));
+    // Handle error inside loop
+    if let Some(err) = command_loop.start_loop().err() {
+        println!("{}", err);
+    }
+
     Ok(())
 }
 
@@ -129,7 +131,7 @@ fn feed_command(
     command_loop: &mut CommandLoop,
     write_confirm: bool,
 ) -> CedResult<()> {
-    let command_split: Vec<&str> = command.split_terminator(";").collect();
+    let command_split: Vec<&str> = command.split_terminator(';').collect();
     for command in command_split {
         let command = Command::from_str(command)?;
         // Write should confirm
@@ -230,7 +232,7 @@ impl CommandLoop {
             _ => self.history.take_snapshot(self.processor.get_page_data()?),
         }
 
-        if let Err(err) = self.processor.execute_command(&command) {
+        if let Err(err) = self.processor.execute_command(command) {
             if panic {
                 return Err(err);
             } else {
