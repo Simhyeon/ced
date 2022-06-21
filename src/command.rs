@@ -712,7 +712,7 @@ impl Processor {
             })?;
         }
         if args.len() >= 3 {
-            column_type = ValueType::from_str(&args[2]);
+            column_type = ValueType::from_str(&args[2])?;
         }
 
         if args.len() >= 4 {
@@ -943,7 +943,7 @@ impl Processor {
             print_mode = &args[1];
         }
 
-        match self.get_page_data()?.get_cell(x, y)? {
+        match self.get_page_data()?.get_cell(x, y) {
             Some(cell) => match print_mode.to_lowercase().as_str() {
                 "v" | "verbose" => utils::write_to_stdout(&format!("{:?}\n", cell))?,
                 "d" | "debug" => {
@@ -1122,7 +1122,7 @@ impl Processor {
         Ok(())
     }
 
-    pub fn limit_column_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+    pub fn limit_column_from_args(&mut self, args: &[String]) -> CedResult<()> {
         if args.is_empty() {
             self.add_limiter_prompt()?;
         } else {
@@ -1132,7 +1132,7 @@ impl Processor {
                 ));
             }
             let column_name = &args[0];
-            let source = args[1].split(',').collect();
+            let source = args[1].split(',').collect::<Vec<_>>();
             let panic = !args[2].parse::<bool>().map_err(|_| {
                 CedError::CommandError(
                     "You need to feed boolean value for the force value".to_string(),

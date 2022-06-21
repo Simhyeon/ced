@@ -1,5 +1,4 @@
 use crate::{CedError, CedResult};
-use dcsv;
 use dcsv::{ValueLimiter, LIMITER_ATTRIBUTE_LEN};
 use std::{collections::HashMap, path::PathBuf};
 
@@ -49,7 +48,7 @@ impl Preset {
     fn parse_preset(source: &str) -> CedResult<Vec<(String, ValueLimiter)>> {
         let mut limiters = vec![];
         for line in source.lines() {
-            let csv = dcsv::utils::csv_row_to_vector(line, None);
+            let csv = dcsv::utils::csv_row_to_vector(line, None, false);
             if csv.len() != LIMITER_ATTRIBUTE_LEN + 1 {
                 return Err(CedError::InvalidRowData(format!(
                     "Given line \"{}\" doesn't include necessary limiter data",

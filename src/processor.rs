@@ -96,7 +96,7 @@ impl Processor {
                 .use_line_delimiter(line_ending.unwrap_or('\n'))
                 .has_header(has_header)
                 .ignore_empty_row(ignore_empty_row)
-                .read_from_stream(data.as_bytes())?;
+                .data_from_stream(data.as_bytes())?;
             self.pages.insert(page.to_owned(), csv_data);
             self.cursor = Some(page.to_owned());
             Ok(())
@@ -243,7 +243,7 @@ impl Processor {
         Ok(())
     }
 
-    pub fn add_row(&mut self, row_number: usize, values: Option<&Vec<Value>>) -> CedResult<()> {
+    pub fn add_row(&mut self, row_number: usize, values: Option<&[Value]>) -> CedResult<()> {
         self.get_page_data_mut()?.insert_row(row_number, values)?;
         Ok(())
     }
@@ -333,7 +333,7 @@ impl Processor {
 
         let mut row = content.next();
         while let Some(row_src) = row {
-            let row_args = dcsv::utils::csv_row_to_vector(row_src, None);
+            let row_args = dcsv::utils::csv_row_to_vector(row_src, None, false);
             let limiter = ValueLimiter::from_line(&row_args[1..].to_vec())?;
             self.set_limiter(&row_args[0], &limiter, panic)?;
             row = content.next();
@@ -403,7 +403,7 @@ impl Processor {
     }
 
     pub fn get_cell(&self, row: usize, column: usize) -> CedResult<Option<&Value>> {
-        Ok(self.get_page_data()?.get_cell(row, column)?)
+        Ok(self.get_page_data()?.get_cell(row, column))
     }
 
     pub fn get_row(&self, index: usize) -> CedResult<Option<&Row>> {
