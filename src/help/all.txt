@@ -51,6 +51,18 @@ import, i <HAS_HEADER : boolean>{Optional} <LINE_ENDING>{Optional}
 		import file_name.csv false
 		import mac_file.csv true CR
 
+import-raw, ir <HAS_HEADER: boolean>{Optional} <LINE_ENDING>{Optional}
+	Import a csv file into ced's virtual array. This sets csv value as array
+	mode. Within array mode, duplicate columns are allowed but limiters are
+	disabled.
+
+	Feed LINE_ENDING to read a specific file format.
+		- CR
+
+	e.g)
+		import-raw file_name.csv
+		ir mac_file.csv true CR
+
 execute, ex <FILE : String>
 	Execute a file's content as command sequence. 
 
