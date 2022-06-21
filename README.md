@@ -9,6 +9,8 @@ prevents you from adding surplus column or invalid data type.
 
 ### Install
 
+[Install rust related binaries](https://www.rust-lang.org/tools/install)
+
 ```bash
 cargo install ced --features cli --locked
 ```
