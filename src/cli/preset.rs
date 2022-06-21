@@ -18,6 +18,7 @@ impl Preset {
         let mut instance = Self {
             list: HashMap::new(),
         };
+        println!("HERE?");
         if use_defualt {
             instance.append_default()?;
         }
@@ -63,23 +64,24 @@ impl Preset {
     }
 
     fn append_default(&mut self) -> CedResult<()> {
+        println!("WHAT?");
         let default = IntoIterator::into_iter([
             (
                 "text".to_owned(),
-                ValueLimiter::from_line(&vec!["text", "", "", ""])?,
+                ValueLimiter::from_line(&["text", "", "", ""])?,
             ),
             (
                 "number".to_owned(),
-                ValueLimiter::from_line(&vec!["number", "", "", ""])?,
+                ValueLimiter::from_line(&["number", "", "", ""])?,
             ),
             (
                 "float".to_owned(),
-                ValueLimiter::from_line(&vec!["text", "0.0", "", r#"[+-]?([0-9]*[.])?[0-9]+"#])?,
+                ValueLimiter::from_line(&["text", "0.0", "", r#"[+-]?([0-9]*[.])?[0-9]+"#])?,
             ),
             (
                 "email".to_owned(),
-                ValueLimiter::from_line(&vec![
-                    "email",
+                ValueLimiter::from_line(&[
+                    "text",
                     "johndoe@mail.com",
                     "",
                     r#"^([a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6})*$"#,
@@ -87,8 +89,8 @@ impl Preset {
             ),
             (
                 "date".to_owned(),
-                ValueLimiter::from_line(&vec![
-                    "date",
+                ValueLimiter::from_line(&[
+                    "text",
                     "2000-01-01",
                     "",
                     r#"([12]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))"#,
@@ -96,8 +98,8 @@ impl Preset {
             ),
             (
                 "time".to_owned(),
-                ValueLimiter::from_line(&vec![
-                    "time",
+                ValueLimiter::from_line(&[
+                    "text",
                     "00:00:00",
                     "",
                     r#"^(?:(?:([01]?\d|2[0-3]):)?([0-5]?\d):)?([0-5]?\d)$"#,
@@ -105,8 +107,8 @@ impl Preset {
             ),
             (
                 "url".to_owned(),
-                ValueLimiter::from_line(&vec![
-                    "url",
+                ValueLimiter::from_line(&[
+                    "text",
                     "http://john.doe",
                     "",
                     r#"[(http(s)?)://(www\.)?a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)"#,

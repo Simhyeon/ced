@@ -1,0 +1,11 @@
+import-raw, ir <LINE_ENDING>{Optional}
+	Import a csv file into ced's virtual array. Import file can be sent as
+	first argument from terminal. 
+
+	Feed LINE_ENDING to read a specific file format.
+		- CR
+
+	e.g)
+		import-raw file_name.csv
+		ir mac_file.csv true CR
+

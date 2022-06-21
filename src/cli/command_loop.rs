@@ -84,7 +84,6 @@ pub fn start_main_loop() -> CedResult<()> {
     if command_exit {
         return Ok(());
     }
-
     // Handle error inside loop
     if let Some(err) = command_loop.start_loop().err() {
         println!("{}", err);
@@ -257,7 +256,7 @@ impl CommandLoop {
     }
 
     fn add_empty_page(&mut self) -> CedResult<()> {
-        self.processor.add_page("\\EMPTY", "", false, None)?;
+        self.processor.add_page("\\EMPTY", "", false, None, false)?;
         Ok(())
     }
 }

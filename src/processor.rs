@@ -19,15 +19,16 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "cli")]
 use crate::cli::preset::Preset;
 use crate::error::{CedError, CedResult};
+use crate::page::Page;
 use crate::utils;
-use dcsv::{Column, Row, VirtualData};
+use dcsv::Column;
 use dcsv::{Value, ValueLimiter, ValueType};
 use std::collections::HashMap;
 
 /// Csv processor
 pub struct Processor {
     pub(crate) file: Option<PathBuf>,
-    pub(crate) pages: HashMap<String, VirtualData>,
+    pub(crate) pages: HashMap<String, Page>,
     pub(crate) cursor: Option<String>,
     pub(crate) print_logs: bool,
     #[cfg(feature = "cli")]
@@ -79,6 +80,7 @@ impl Processor {
         data: &str,
         has_header: bool,
         line_ending: Option<char>,
+        raw_mode: bool,
     ) -> CedResult<()> {
         if self.pages.contains_key(page) {
             return Err(CedError::InvalidPageOperation(format!(
@@ -92,22 +94,28 @@ impl Processor {
                     ignore_empty_row = false;
                 }
             }
-            let csv_data = dcsv::Reader::new()
+            let mut reader = dcsv::Reader::new()
                 .use_line_delimiter(line_ending.unwrap_or('\n'))
                 .has_header(has_header)
-                .ignore_empty_row(ignore_empty_row)
-                .data_from_stream(data.as_bytes())?;
-            self.pages.insert(page.to_owned(), csv_data);
+                .ignore_empty_row(ignore_empty_row);
+
+            let page_data = if raw_mode {
+                Page::new_array(reader.array_from_stream(data.as_bytes())?)
+            } else {
+                Page::new_data(reader.data_from_stream(data.as_bytes())?)
+            };
+            self.pages.insert(page.to_owned(), page_data);
             self.cursor = Some(page.to_owned());
             Ok(())
         }
     }
 
+    // NOw this looks suspicious. why there are 2 getters?
     #[allow(dead_code)]
     /// Try getting page data
     ///
     /// This return an option of data's mutable reference
-    pub(crate) fn try_get_page_data(&mut self) -> Option<&mut VirtualData> {
+    pub(crate) fn try_get_page_data(&mut self) -> Option<&mut Page> {
         if let Some(cursor) = self.cursor.as_ref() {
             self.pages.get_mut(cursor)
         } else {
@@ -120,7 +128,7 @@ impl Processor {
     /// This method assumes cursor is set and valid.
     ///
     /// This return data's mutable reference as result
-    pub(crate) fn get_page_data_mut(&mut self) -> CedResult<&mut VirtualData> {
+    pub(crate) fn get_page_data_mut(&mut self) -> CedResult<&mut Page> {
         self.pages
             .get_mut(self.cursor.as_ref().unwrap())
             .ok_or_else(|| {
@@ -135,9 +143,7 @@ impl Processor {
     ///
     /// This method assumes cursor is set and valid but you can set extra argument to return empty
     /// data set.
-    ///
-    /// This return data's mutable reference as result
-    pub(crate) fn get_page_data(&self) -> CedResult<&VirtualData> {
+    pub(crate) fn get_page_data(&self) -> CedResult<&Page> {
         self.pages
             .get(self.cursor.as_ref().unwrap())
             .ok_or_else(|| {
@@ -155,11 +161,15 @@ impl Processor {
         Ok(())
     }
 
+    /// Import file content as page
+    ///
+    /// This will drop the page if given page name already exists.
     pub fn import_from_file(
         &mut self,
         path: impl AsRef<Path>,
         has_header: bool,
         line_ending: Option<char>,
+        raw_mode: bool,
     ) -> CedResult<()> {
         let content = std::fs::read_to_string(&path).map_err(|err| {
             CedError::io_error(
@@ -167,12 +177,12 @@ impl Processor {
                 &format!("Failed to import file \"{}\"", path.as_ref().display()),
             )
         })?;
-        self.add_page(
-            &path.as_ref().display().to_string(),
-            &content,
-            has_header,
-            line_ending,
-        )?;
+        let page_name = &path.as_ref().display().to_string();
+
+        // Remove exsiting entry for convenience.
+        self.pages.remove_entry(page_name);
+
+        self.add_page(page_name, &content, has_header, line_ending, raw_mode)?;
         self.file.replace(path.as_ref().to_owned());
         Ok(())
     }
@@ -218,12 +228,12 @@ impl Processor {
         Ok(())
     }
 
-    pub fn edit_row(&mut self, row_number: usize, input: Vec<Option<Value>>) -> CedResult<()> {
+    pub fn edit_row(&mut self, row_number: usize, input: &[Option<Value>]) -> CedResult<()> {
         self.get_page_data_mut()?.edit_row(row_number, input)?;
         Ok(())
     }
 
-    pub fn set_row(&mut self, row_number: usize, input: Vec<Value>) -> CedResult<()> {
+    pub fn set_row(&mut self, row_number: usize, input: &[Value]) -> CedResult<()> {
         self.get_page_data_mut()?.set_row(row_number, input)?;
         Ok(())
     }
@@ -235,10 +245,10 @@ impl Processor {
     ) -> CedResult<()> {
         self.get_page_data_mut()?.set_row(
             row_number,
-            input
+            &input
                 .iter()
                 .map(|s| Value::Text(s.as_ref().to_owned()))
-                .collect(),
+                .collect::<Vec<_>>(),
         )?;
         Ok(())
     }
@@ -269,7 +279,7 @@ impl Processor {
         limiter: Option<ValueLimiter>,
         placeholder: Option<Value>,
     ) -> CedResult<()> {
-        self.get_page_data_mut()?.insert_column(
+        self.get_page_data_mut()?.insert_column_with_type(
             column_number,
             column_name,
             column_type,
@@ -279,7 +289,7 @@ impl Processor {
         Ok(())
     }
 
-    pub fn remove_row(&mut self, row_number: usize) -> CedResult<Option<Row>> {
+    pub fn remove_row(&mut self, row_number: usize) -> CedResult<bool> {
         Ok(self.get_page_data_mut()?.delete_row(row_number))
     }
 
@@ -288,7 +298,7 @@ impl Processor {
         Ok(())
     }
 
-    pub fn add_column_array(&mut self, columns: &Vec<impl AsRef<str>>) -> CedResult<()> {
+    pub fn add_column_array(&mut self, columns: &[impl AsRef<str>]) -> CedResult<()> {
         for col in columns {
             let column_count = self.get_page_data_mut()?.get_column_count();
             self.add_column(column_count, col.as_ref(), ValueType::Text, None, None)?;
@@ -307,15 +317,34 @@ impl Processor {
     }
 
     pub fn rename_column(&mut self, column: &str, new_name: &str) -> CedResult<()> {
-        self.get_page_data_mut()?.rename_column(column, new_name)?;
+        let page = self.get_page_data_mut()?;
+        if let Some(column) = page.try_get_column_index(column) {
+            page.rename_column(column, new_name)?;
+        } else {
+            return Err(CedError::OutOfRangeError);
+        }
         Ok(())
     }
 
     pub fn export_schema(&self) -> CedResult<String> {
-        Ok(self.get_page_data()?.export_schema())
+        let page = self.get_page_data()?;
+        if !page.is_array() {
+            // Sincie it is not an array, it is ok to unwrap
+            Ok(page.get_data().unwrap().export_schema())
+        } else {
+            Err(CedError::InvalidPageOperation(
+                "Cannot export schmea when csv is imported as array".to_string(),
+            ))
+        }
     }
 
     pub fn set_schema(&mut self, path: impl AsRef<Path>, panic: bool) -> CedResult<()> {
+        if self.get_page_data_mut()?.is_array() {
+            return Err(CedError::InvalidPageOperation(
+                "Cannot set schema in array mode".to_string(),
+            ));
+        }
+
         let content = std::fs::read_to_string(&path).map_err(|err| {
             CedError::io_error(
                 err,
@@ -406,19 +435,16 @@ impl Processor {
         Ok(self.get_page_data()?.get_cell(row, column))
     }
 
-    pub fn get_row(&self, index: usize) -> CedResult<Option<&Row>> {
-        Ok(self.get_page_data()?.rows.get(index))
+    pub fn get_column(&self, column_index: usize) -> CedResult<Option<&Column>> {
+        let page = self.get_page_data()?;
+        Ok(page.get_columns().get(column_index))
     }
 
-    pub fn get_row_mut(&mut self, index: usize) -> CedResult<Option<&mut Row>> {
-        Ok(self.get_page_data_mut()?.rows.get_mut(index))
-    }
-
-    pub fn get_column_mut(&mut self, index: usize) -> CedResult<Option<&mut Column>> {
-        Ok(self.get_page_data_mut()?.columns.get_mut(index))
-    }
-
-    pub fn get_column(&self, index: usize) -> CedResult<Option<&Column>> {
-        Ok(self.get_page_data()?.columns.get(index))
+    pub fn get_column_by_name(&self, column_name: &str) -> CedResult<Option<&Column>> {
+        let page = self.get_page_data()?;
+        Ok(match page.try_get_column_index(column_name) {
+            Some(index) => page.get_columns().get(index),
+            None => None,
+        })
     }
 }

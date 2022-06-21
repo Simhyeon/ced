@@ -1,10 +1,10 @@
 #[cfg(feature = "cli")]
 use crate::cli::help;
 use crate::error::{CedError, CedResult};
+#[cfg(feature = "cli")]
+use crate::page::Page;
 use crate::processor::Processor;
 use crate::utils::{self, subprocess};
-#[cfg(feature = "cli")]
-use dcsv::VirtualData;
 use dcsv::{Column, Row, SCHEMA_HEADER};
 use dcsv::{Value, ValueLimiter, ValueType};
 use std::io::Write;
@@ -23,6 +23,7 @@ pub enum CommandType {
     Create,
     Write,
     Import,
+    ImportRaw,
     Export,
     AddRow,
     AddColumn,
@@ -60,6 +61,7 @@ impl FromStr for CommandType {
             #[cfg(feature = "cli")]
             "help" | "h" => Self::Help,
             "import" | "i" => Self::Import,
+            "import-raw" | "ir" => Self::ImportRaw,
             "export" | "x" => Self::Export,
             "execute" | "ex" => Self::Execute,
             "create" | "c" => Self::Create,
@@ -150,8 +152,8 @@ pub struct CommandHistory {
     // TODO
     // Preserved for command pattern
     // history: Vec<Command>,
-    memento_history: Vec<VirtualData>,
-    redo_history: Vec<VirtualData>,
+    memento_history: Vec<Page>,
+    redo_history: Vec<Page>,
     history_capacity: usize,
 }
 
@@ -174,7 +176,7 @@ impl CommandHistory {
         }
     }
 
-    pub(crate) fn take_snapshot(&mut self, data: &VirtualData) {
+    pub(crate) fn take_snapshot(&mut self, data: &Page) {
         self.memento_history.push(data.clone());
         // You cannot redo if you have done something other than undo
         self.redo_history.clear();
@@ -184,7 +186,7 @@ impl CommandHistory {
         }
     }
 
-    pub(crate) fn pop(&mut self) -> Option<&VirtualData> {
+    pub(crate) fn pop(&mut self) -> Option<&Page> {
         if let Some(data) = self.memento_history.pop() {
             self.redo_history.push(data);
             self.redo_history.last()
@@ -193,7 +195,7 @@ impl CommandHistory {
         }
     }
 
-    pub(crate) fn pull_redo(&mut self) -> Option<VirtualData> {
+    pub(crate) fn pull_redo(&mut self) -> Option<Page> {
         self.redo_history.pop()
     }
 }
@@ -210,7 +212,8 @@ impl Processor {
             CommandType::None(src) => {
                 return Err(CedError::CommandError(format!("No such command \"{src}\"")))
             }
-            CommandType::Import => self.import_file_from_args(&command.arguments)?,
+            CommandType::Import => self.import_file_from_args(&command.arguments, false)?,
+            CommandType::ImportRaw => self.import_file_from_args(&command.arguments, true)?,
             CommandType::Schema => self.import_schema_from_args(&command.arguments)?,
             CommandType::SchemaInit => self.init_schema_from_args(&command.arguments)?,
             CommandType::SchemaExport => self.export_schema_from_args(&command.arguments)?,
@@ -334,7 +337,7 @@ impl Processor {
                 if values.len() == 0 {
                     return Ok(());
                 }
-                self.edit_row(row_number, values)?;
+                self.edit_row(row_number, &values)?;
             }
             _ => {
                 // From 2.. row + data
@@ -393,7 +396,7 @@ impl Processor {
 
         // Edit rows only if every operation was succesfull
         for (index, values) in edit_target_values {
-            self.edit_row(index, values)?;
+            self.edit_row(index, &values)?;
         }
 
         self.log(&format!(
@@ -555,7 +558,7 @@ impl Processor {
     #[cfg(feature = "cli")]
     fn add_row_loop(&mut self, row_number: Option<usize>) -> CedResult<Vec<Value>> {
         let mut values = vec![];
-        let columns = &self.get_page_data()?.columns;
+        let columns = &self.get_page_data()?.get_columns();
         if columns.is_empty() {
             utils::write_to_stdout(": Csv is empty : \n")?;
             return Ok(vec![]);
@@ -622,7 +625,7 @@ impl Processor {
     #[cfg(feature = "cli")]
     fn edit_row_loop(&mut self, row_number: Option<usize>) -> CedResult<Vec<Option<Value>>> {
         let mut values = vec![];
-        let columns = &self.get_page_data()?.columns;
+        let columns = &self.get_page_data()?.get_columns();
         if columns.is_empty() {
             utils::write_to_stdout(": Csv is empty : \n")?;
             return Ok(vec![]);
@@ -737,7 +740,7 @@ impl Processor {
         }
         .sub(1);
 
-        if self.remove_row(row_count)?.is_none() {
+        if !self.remove_row(row_count)? {
             utils::write_to_stdout("No such row to remove\n")?;
         }
         self.log(&format!("A row removed from \"{}\"\n", row_count))?;
@@ -777,14 +780,14 @@ impl Processor {
     ///
     /// file is asssumed to have header
     /// You can give has_header value as second parameter
-    fn import_file_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+    fn import_file_from_args(&mut self, args: &Vec<String>, raw_mode: bool) -> CedResult<()> {
         match args.len() {
             0 => {
                 return Err(CedError::CommandError(
                     "You have to specify a file name to import from".to_owned(),
                 ))
             }
-            1 => self.import_from_file(Path::new(&args[0]), true, None)?,
+            1 => self.import_from_file(Path::new(&args[0]), true, None, raw_mode)?,
             _ => {
                 // Optional line ending configuration
                 let mut line_ending = None;
@@ -801,6 +804,7 @@ impl Processor {
                         ))
                     })?,
                     line_ending,
+                    raw_mode,
                 )?
             }
         }
@@ -968,14 +972,8 @@ impl Processor {
         let row_index = args[0].parse::<usize>().map_err(|_| {
             CedError::CommandError("You need to feed a valid number as a row number".to_string())
         })?;
-        let row = self.get_row(row_index)?;
 
-        if row.is_none() {
-            return Err(CedError::CommandError(
-                "Row number out of range".to_string(),
-            ));
-        }
-        let row = row.unwrap().to_string(&self.get_page_data()?.columns)? + "\n";
+        let row = self.get_page_data()?.get_row_as_string(row_index)? + "\n";
 
         let viewer: Vec<_>;
         // Use given command
@@ -1051,7 +1049,7 @@ impl Processor {
             let header_with_number = format!(
                 "{: ^digits_count$}| {}\n",
                 "H ",
-                page.columns
+                page.get_columns()
                     .iter()
                     .enumerate()
                     .map(|(i, col)| format!("[{}]:{}", i, col.name))
@@ -1061,20 +1059,7 @@ impl Processor {
             utils::write_to_stdout(&header_with_number)?;
         }
 
-        let row = &page.rows[row_index]; // It is safe to index an array
-        let row_string = page
-            .columns
-            .iter()
-            .enumerate()
-            .map(|(i, col)| {
-                let cell = row
-                    .get_cell_value(&col.name)
-                    .unwrap_or(&Value::Text(String::new()))
-                    .to_string();
-                format!("[{}]:{}", i, cell)
-            })
-            .collect::<Vec<_>>()
-            .join("");
+        let row_string = page.get_row_as_string(row_index)?;
         utils::write_to_stdout(&format!("{: ^digits_count$} | {}\n", row_index, row_string))?;
 
         Ok(())
@@ -1094,7 +1079,7 @@ impl Processor {
         let header_with_number = format!(
             "{: <digits_count$} | {}\n",
             "H",
-            page.columns
+            page.get_columns()
                 .iter()
                 .enumerate()
                 .map(|(i, col)| format!("[{}]:{}", i, col.name))
@@ -1103,22 +1088,17 @@ impl Processor {
         );
         utils::write_to_stdout(&header_with_number)?;
 
-        for (index, row) in page.rows.iter().enumerate() {
-            let row_string = page
-                .columns
+        let rows = self.get_page_data()?.get_rows();
+        for (index, row) in rows.iter().enumerate() {
+            let row_string = row
                 .iter()
                 .enumerate()
-                .map(|(i, col)| {
-                    let cell = row
-                        .get_cell_value(&col.name)
-                        .unwrap_or(&Value::Text(String::new()))
-                        .to_string();
-                    format!("[{}]:{}", i, cell)
-                })
+                .map(|(i, cell)| format!("[{}]:{}", i, cell))
                 .collect::<Vec<_>>()
                 .join("");
             utils::write_to_stdout(&format!("{: <digits_count$} | {}\n", index, row_string))?;
         }
+
         Ok(())
     }
 
