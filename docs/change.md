@@ -5,6 +5,7 @@
 - Bugfix : Strange read\_input in windows platform.
 - Ergono : Write now panics when there is no source file.
 - Ergono : More documentations
+- BugFix : Previously import always added but never shrinked cleaned csv data
 
 ### 0.1.7
 

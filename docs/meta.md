@@ -10,6 +10,7 @@
 * [x] Update dcsv version to 2.0
 	* [x] Update breaking changes.
 	* [x] Import as an array Command
+* [x] Previously import always added but never shrinked read csv data
 
 * [ ] Check limiter preset
 * [ ] Create test.rs for easier testing
