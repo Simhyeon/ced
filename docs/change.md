@@ -1,7 +1,10 @@
-### 0.1.8
+### 0.2.0
 
-- Bufgix : Strange read\_input in windows platform.
+- Featur : New command import-raw for raw editing mode
+- Change : Updated dcsv version with many internal breaking changes
+- Bugfix : Strange read\_input in windows platform.
 - Ergono : Write now panics when there is no source file.
+- Ergono : More documentations
 
 ### 0.1.7
 

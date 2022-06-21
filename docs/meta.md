@@ -3,6 +3,14 @@
 * [x] Ced behaves very strange in windows paltform.
 	- This was because read\_input was not trimming properly
 * [x] Write panics when ced didn't import any file
+* [x] Cargo clippy
+* [x] Made api page usable
+* [x] Removed file from processor and included in page
+* [x] Make docs.rs usable
+* [x] Update dcsv version to 2.0
+	* [x] Update breaking changes.
+	* [x] Import as an array Command
+
 * [ ] Check limiter preset
 * [ ] Create test.rs for easier testing
 
