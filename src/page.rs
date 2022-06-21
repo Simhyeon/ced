@@ -1,9 +1,12 @@
+use std::path::PathBuf;
+
 use dcsv::{Column, VCont, Value, ValueLimiter, ValueType, VirtualArray, VirtualData};
 
 use crate::{CedError, CedResult};
 
 #[derive(Clone)]
 pub(crate) struct Page {
+    pub(crate) source_file: Option<PathBuf>,
     content: PageContent,
 }
 
@@ -24,14 +27,20 @@ impl std::fmt::Display for Page {
 }
 
 impl Page {
+    pub fn set_source_file(&mut self, source_file: PathBuf) {
+        self.source_file.replace(source_file);
+    }
+
     pub fn new_data(data: VirtualData) -> Self {
         Self {
+            source_file: None,
             content: PageContent::Data(data),
         }
     }
 
     pub fn new_array(array: VirtualArray) -> Self {
         Self {
+            source_file: None,
             content: PageContent::Array(array),
         }
     }
