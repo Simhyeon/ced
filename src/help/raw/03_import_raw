@@ -1,4 +1,4 @@
-import-raw, ir <LINE_ENDING>{Optional}
+import-raw, ir <HAS_HEADER: boolean>{Optional} <LINE_ENDING>{Optional}
 	Import a csv file into ced's virtual array. Import file can be sent as
 	first argument from terminal. 
 
