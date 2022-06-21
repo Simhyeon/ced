@@ -1,5 +1,6 @@
 use crate::cli::parse::{FlagType, Parser};
 use crate::command::{CommandHistory, CommandType};
+use crate::CedError;
 use crate::{cli::help, utils, CedResult, Command, Processor};
 use std::str::FromStr;
 
@@ -228,7 +229,14 @@ impl CommandLoop {
             // Meta related
             CommandType::Help | CommandType::Version => (),
 
-            _ => self.history.take_snapshot(self.processor.get_page_data()?),
+            _ => {
+                let cursor = self
+                    .processor
+                    .get_cursor()
+                    .ok_or(CedError::InvalidPageOperation("Page is empty".to_string()))?;
+                self.history
+                    .take_snapshot(self.processor.get_page_data(&cursor)?)
+            }
         }
 
         if let Err(err) = self.processor.execute_command(command) {
@@ -243,14 +251,22 @@ impl CommandLoop {
 
     fn undo(&mut self) -> CedResult<()> {
         if let Some(prev) = self.history.pop() {
-            *self.processor.get_page_data_mut()? = prev.clone();
+            let cursor = self
+                .processor
+                .get_cursor()
+                .ok_or(CedError::InvalidPageOperation("Page is empty".to_string()))?;
+            *self.processor.get_page_data_mut(&cursor)? = prev.clone();
         }
         Ok(())
     }
 
     fn redo(&mut self) -> CedResult<()> {
         if let Some(prev) = self.history.pull_redo() {
-            *self.processor.get_page_data_mut()? = prev;
+            let cursor = self
+                .processor
+                .get_cursor()
+                .ok_or(CedError::InvalidPageOperation("Page is empty".to_string()))?;
+            *self.processor.get_page_data_mut(&cursor)? = prev;
         }
         Ok(())
     }
