@@ -168,6 +168,13 @@ impl Processor {
         Ok(())
     }
 
+    /// Drop all data from processor
+    pub fn drop_pages(&mut self) -> CedResult<()> {
+        self.pages.clear();
+        self.cursor = None;
+        Ok(())
+    }
+
     /// Import file content as page
     ///
     /// This will drop the page if given page name already exists.

@@ -217,7 +217,11 @@ impl Processor {
             CommandType::None(src) => {
                 return Err(CedError::CommandError(format!("No such command \"{src}\"")))
             }
-            CommandType::Import => self.import_file_from_args(&command.arguments, false)?,
+            CommandType::Import => {
+                #[cfg(feature = "cli")]
+                self.drop_pages()?;
+                self.import_file_from_args(&command.arguments, false)?
+            }
             CommandType::ImportRaw => self.import_file_from_args(&command.arguments, true)?,
             CommandType::Schema => self.import_schema_from_args(page_name, &command.arguments)?,
             CommandType::SchemaInit => self.init_schema_from_args(&command.arguments)?,
