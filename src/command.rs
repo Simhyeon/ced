@@ -953,7 +953,7 @@ impl Processor {
         }
 
         if viewer.is_empty() {
-            self.print_virtual_data(page_name)?;
+            self.print_virtual_container(page_name)?;
         } else {
             let csv = self.get_page_as_string(page_name)?;
             self.print_with_viewer(csv, &viewer)?;
@@ -1126,8 +1126,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Print virtual data to console
-    fn print_virtual_data(&self, page_name: &str) -> CedResult<()> {
+    /// Print virtual container to console
+    fn print_virtual_container(&self, page_name: &str) -> CedResult<()> {
         let page = self.get_page_data(page_name)?;
         // Empty csv value, return early
         if page.get_row_count() == 0 {
@@ -1135,6 +1135,9 @@ impl Processor {
             return Ok(());
         }
 
+        if page.is_array() {
+            utils::write_to_stdout("-- Mode: Array --\n")?;
+        }
         let digits_count = page.get_row_count().to_string().len();
         // 0 length csv is panicking error at this moment, thus safe to unwrap
         let header_with_number = format!(
