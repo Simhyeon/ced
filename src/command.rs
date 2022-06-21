@@ -53,6 +53,8 @@ pub enum CommandType {
     None(String),
 }
 
+// TODO
+// Currently this never fails
 impl FromStr for CommandType {
     type Err = CedError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
@@ -93,10 +95,14 @@ impl FromStr for CommandType {
             "schema-init" | "si" => Self::SchemaInit,
             "schema-export" | "se" => Self::SchemaExport,
             _ => {
-                return Err(CedError::CommandError(format!(
-                    "{} is not a valid command type",
-                    src
-                )))
+                Self::None(src.to_string())
+
+                // TODO
+                // Disabled error branch for current compatiblity
+                //return Err(CedError::CommandError(format!(
+                //"{} is not a valid command type",
+                //src
+                //)))
             }
         };
         Ok(command_type)
