@@ -21,4 +21,4 @@ path="src/cli/bin.rs"
 cli = []
 
 [dependencies]
-dcsv = { git="https://github.com/simhyeon/dcsv", branch="dev", version = "0.3.0"}
+dcsv = { version = "0.3.0"}
