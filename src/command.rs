@@ -12,6 +12,7 @@ use std::str::FromStr;
 use std::{ops::Sub, path::Path};
 use utils::DEFAULT_DELIMITER;
 
+/// Types of command
 #[derive(PartialEq, Debug)]
 pub enum CommandType {
     #[cfg(feature = "cli")]
@@ -102,6 +103,7 @@ impl FromStr for CommandType {
     }
 }
 
+/// Ergonomic wrapper around processor api
 #[derive(Debug)]
 pub struct Command {
     pub command_type: CommandType,
@@ -361,7 +363,7 @@ impl Processor {
                     .split(DEFAULT_DELIMITER)
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>();
-                self.set_row_from_string(page_name, row_number, &values)?;
+                self.set_row_from_string_array(page_name, row_number, &values)?;
             }
         }
 
@@ -529,7 +531,7 @@ impl Processor {
                     .split(DEFAULT_DELIMITER)
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>();
-                self.add_row_from_strings(page_name, row_number, &values)?;
+                self.add_row_from_string_array(page_name, row_number, &values)?;
             }
         }
         self.log(&format!("New row added to \"{}\"\n", row_number))?;
@@ -930,10 +932,7 @@ impl Processor {
         };
         let success = self.overwrite_to_file(page_name, cache)?;
         if success {
-            self.log(&format!(
-                "File overwritten to \"{}\"\n",
-                self.file.as_ref().unwrap().display()
-            ))?;
+            self.log("File overwritten successfully")?;
         } else {
             self.log(": No source file to write. Use export instead :\n")?;
         }
