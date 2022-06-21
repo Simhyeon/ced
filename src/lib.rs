@@ -1,5 +1,7 @@
 /// Ced, a csv editing backend
 ///
+/// Refer ```Processor``` struct for library usage.
+///
 /// ### Install
 ///
 /// ```bash
