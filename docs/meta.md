@@ -1,17 +1,11 @@
 ### TODO
 
-* [x] Ced behaves very strange in windows paltform.
-	- This was because read\_input was not trimming properly
-* [x] Write panics when ced didn't import any file
-* [x] Cargo clippy
-* [x] Made api page usable
-* [x] Removed file from processor and included in page
-* [x] Make docs.rs usable
-* [x] Update dcsv version to 2.0
-	* [x] Update breaking changes.
-	* [x] Import as an array Command
-* [x] Previously import always added but never shrinked read csv data
-
+* [ ] Loop variants are all not properly parsing quoted values
+* [ ] Limiter prompt doesn't respect quote rules
+* [ ] New command
+	* [ ] Drop
+	* [ ] Trim all
+* [ ] Invalid command type occurs program panic which is not desirable
 * [ ] Check limiter preset
 * [ ] Create test.rs for easier testing
 
@@ -152,4 +146,16 @@ Make it swappable so that command pattern can be used later.
 * [x] Limiter respects csv convention now
 * [x] Limiter preset
 	* [x] Include this in command\_loop
+
+* [x] Ced behaves very strange in windows paltform.
+	- This was because read\_input was not trimming properly
+* [x] Write panics when ced didn't import any file
+* [x] Cargo clippy
+* [x] Made api page usable
+* [x] Removed file from processor and included in page
+* [x] Make docs.rs usable
+* [x] Update dcsv version to 2.0
+	* [x] Update breaking changes.
+	* [x] Import as an array Command
+* [x] Previously import always added but never shrinked read csv data
 

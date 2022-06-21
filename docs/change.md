@@ -1,4 +1,15 @@
-### 0.2.0
+# 0.2.1
+
+- Hotfix : Ced panicked when given invalid command type
+
+### Known issues
+
+- Loop variants are not properly parsing quoted values
+	- Add row
+	- Edit row
+	- Limit
+
+# 0.2.0
 
 - Featur : New command import-raw for raw editing mode
 - Change : Updated dcsv version with many internal breaking changes
@@ -7,7 +18,7 @@
 - Ergono : More documentations
 - BugFix : Previously import always added but never shrinked cleaned csv data
 
-### 0.1.7
+# 0.1.7
 
 - BugFix : Print row only worked when viewer was set.
 - BugFix : Header's 'H' character was not properly lined
