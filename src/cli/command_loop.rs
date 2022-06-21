@@ -233,7 +233,7 @@ impl CommandLoop {
                 let cursor = self
                     .processor
                     .get_cursor()
-                    .ok_or(CedError::InvalidPageOperation("Page is empty".to_string()))?;
+                    .ok_or_else(|| CedError::InvalidPageOperation("Page is empty".to_string()))?;
                 self.history
                     .take_snapshot(self.processor.get_page_data(&cursor)?)
             }
@@ -254,7 +254,7 @@ impl CommandLoop {
             let cursor = self
                 .processor
                 .get_cursor()
-                .ok_or(CedError::InvalidPageOperation("Page is empty".to_string()))?;
+                .ok_or_else(|| CedError::InvalidPageOperation("Page is empty".to_string()))?;
             *self.processor.get_page_data_mut(&cursor)? = prev.clone();
         }
         Ok(())
@@ -265,7 +265,7 @@ impl CommandLoop {
             let cursor = self
                 .processor
                 .get_cursor()
-                .ok_or(CedError::InvalidPageOperation("Page is empty".to_string()))?;
+                .ok_or_else(|| CedError::InvalidPageOperation("Page is empty".to_string()))?;
             *self.processor.get_page_data_mut(&cursor)? = prev;
         }
         Ok(())

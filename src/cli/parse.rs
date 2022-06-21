@@ -21,10 +21,10 @@ impl Parser {
         for item in source {
             let should_break = self.find_word_variant(item.as_ref());
             if should_break {
-                return std::mem::replace(&mut self.flags, vec![]);
+                return std::mem::take(&mut self.flags);
             }
         }
-        std::mem::replace(&mut self.flags, vec![])
+        std::mem::take(&mut self.flags)
     }
 
     /// Check word variant
@@ -32,7 +32,7 @@ impl Parser {
     /// * - Return : If loop should break
     fn find_word_variant(&mut self, word: &str) -> bool {
         // Add argument
-        if !self.accept_flag_option && !word.starts_with("-") {
+        if !self.accept_flag_option && !word.starts_with('-') {
             self.flags.push(Flag::argument(word))
         } else {
             // Add other flag
@@ -60,7 +60,7 @@ impl Parser {
             }
         }
 
-        return false;
+        false
     }
 
     fn match_word(word: &str) -> Flag {

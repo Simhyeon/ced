@@ -403,7 +403,7 @@ impl Processor {
         // Inclusive range
         for index in start_index..=end_index {
             let values = self.edit_row_loop(page_name, Some(index))?;
-            if values.len() == 0 {
+            if values.is_empty() {
                 return Ok(());
             }
             edit_target_values.push((index, values));
