@@ -4,13 +4,17 @@
 /// ```rust
 /// use ced::Processor;
 /// let mut processor = Processor::new();
-/// processor.import_from_file("test.csv", true).unwrap();
 ///
-/// processor.add_row_from_strings(processor.last_row_index(), &vec!["a","b"]).unwrap();
+/// processor.import_from_file("test.csv", true, None, false).unwrap();
 ///
-/// processor.overwrite_to_file(true).unwrap();
+/// // Get current cursor(page_name) for later uses
+/// let page_name = processor.get_cursor().unwrap();
 ///
-/// let data = processor.get_data();
+/// // Processor can hold multiple pages and needs page_name for every operation to work on the
+/// // page
+/// processor.add_row_from_strings(&page_name, processor.last_row_index(&page_name)?, &["a","b"]).unwrap();
+///
+/// processor.overwrite_to_file(&page_name,true).unwrap();
 /// ```
 use std::fs::File;
 use std::io::Write;
@@ -57,10 +61,10 @@ impl Processor {
         }
     }
 
-    /// Change current page
+    /// Change current cusor(page)
     ///
     /// This doesn't affect page itself but change cursor.
-    /// * This returns boolean value whether change succeeded
+    /// * This returns boolean value whether change succeeded or not
     pub fn change_cursor(&mut self, page_name: &str) -> bool {
         if !self.pages.contains_key(page_name) {
             false
