@@ -25,7 +25,7 @@ pub fn print_command_help(command: CommandType) {
         CommandType::Create => include_str!("../help/raw/07_create"),
         CommandType::Write => include_str!("../help/raw/04_write"),
         CommandType::Import => include_str!("../help/raw/03_import"),
-        CommandType::ImportRaw => include_str!("../help/raw/03_import"),
+        CommandType::ImportRaw => include_str!("../help/raw/03_import_raw"),
         CommandType::Export => include_str!("../help/raw/04_export"),
         CommandType::AddRow => include_str!("../help/raw/08_add_row"),
         CommandType::AddColumn => include_str!("../help/raw/09_add_column"),
