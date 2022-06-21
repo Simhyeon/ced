@@ -334,7 +334,7 @@ impl Processor {
                 })?;
                 utils::write_to_stdout("Type comma(,) to exit input\n")?;
                 let values = self.edit_row_loop(Some(row_number))?;
-                if values.len() == 0 {
+                if values.is_empty() {
                     return Ok(());
                 }
                 self.edit_row(row_number, &values)?;
@@ -482,7 +482,7 @@ impl Processor {
                 }
                 utils::write_to_stdout("Type comma(,) to exit input\n")?;
                 let values = self.add_row_loop(None)?;
-                if values.len() == 0 {
+                if values.is_empty() {
                     return Ok(());
                 }
                 self.add_row(row_number, Some(&values))?;
@@ -502,7 +502,7 @@ impl Processor {
                 }
                 utils::write_to_stdout("Type comma(,) to exit input\n")?;
                 let values = self.add_row_loop(None)?;
-                if values.len() == 0 {
+                if values.is_empty() {
                     return Ok(());
                 }
                 self.add_row(row_number, Some(&values))?;
@@ -537,7 +537,7 @@ impl Processor {
             }
 
             // Check csv validity
-            if !utils::is_valid_csv(&content) {
+            if !utils::is_valid_csv(content) {
                 // It is considered as type_mismatch
                 *type_mismatch = true;
             }
@@ -598,7 +598,7 @@ impl Processor {
                 )?;
                 utils::write_to_stdout(&format!("{}~{{{}}} = ", col.name, default))?;
                 let value_src = utils::read_stdin(true)?;
-                value = if value_src.len() != 0 {
+                value = if !value_src.is_empty() {
                     match Value::from_str(&value_src, col.column_type) {
                         Ok(value) => value,
                         Err(_) => {
@@ -808,11 +808,18 @@ impl Processor {
                 )?
             }
         }
-        self.log(&format!("File \"{}\" imported\n", &args[0]))?;
+        let footer = if raw_mode { " as array mode" } else { "" };
+        self.log(&format!("File \"{}\" imported{}\n", &args[0], footer))?;
         Ok(())
     }
 
     fn import_schema_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        if self.get_page_data()?.is_array() {
+            return Err(CedError::InvalidPageOperation(
+                "Cannot import schema in array mode".to_string(),
+            ));
+        }
+
         if args.len() < 2 {
             return Err(CedError::CommandError(
                 "Insufficient variable for schema".to_owned(),
@@ -831,6 +838,12 @@ impl Processor {
     }
 
     fn export_schema_from_args(&mut self, args: &Vec<String>) -> CedResult<()> {
+        if self.get_page_data()?.is_array() {
+            return Err(CedError::InvalidPageOperation(
+                "Cannot export schema in array mode".to_string(),
+            ));
+        }
+
         if args.is_empty() {
             return Err(CedError::CommandError(
                 "Schema export needs a file path".to_owned(),
@@ -909,7 +922,7 @@ impl Processor {
         if viewer.is_empty() {
             self.print_virtual_data()?;
         } else {
-            let csv = self.get_data_as_text()?;
+            let csv = self.get_page_as_string()?;
             self.print_with_viewer(csv, &viewer)?;
         }
 
@@ -1103,6 +1116,12 @@ impl Processor {
     }
 
     pub fn limit_column_from_args(&mut self, args: &[String]) -> CedResult<()> {
+        if self.get_page_data()?.is_array() {
+            return Err(CedError::InvalidPageOperation(
+                "Cannot set limiter in array mode".to_string(),
+            ));
+        }
+
         if args.is_empty() {
             self.add_limiter_prompt()?;
         } else {

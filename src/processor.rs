@@ -191,7 +191,7 @@ impl Processor {
         let mut file = File::create(file)
             .map_err(|err| CedError::io_error(err, "Failed to open file for write"))?;
 
-        file.write_all(self.get_data_as_text()?.as_bytes())
+        file.write_all(self.get_page_as_string()?.as_bytes())
             .map_err(|err| CedError::io_error(err, "Failed to write csv content to file"))?;
         Ok(())
     }
@@ -205,7 +205,7 @@ impl Processor {
         }
 
         let file = self.file.as_ref().unwrap();
-        let csv = self.get_data_as_text()?;
+        let csv = self.get_page_as_string()?;
         // Cache file into temp directory
         if cache {
             std::fs::copy(file, std::env::temp_dir().join("cache.csv"))
@@ -328,6 +328,11 @@ impl Processor {
 
     pub fn export_schema(&self) -> CedResult<String> {
         let page = self.get_page_data()?;
+        if page.is_array() {
+            return Err(CedError::InvalidPageOperation(String::from(
+                "Cannot export schmea from virtual array",
+            )));
+        }
         if !page.is_array() {
             // Sincie it is not an array, it is ok to unwrap
             Ok(page.get_data().unwrap().export_schema())
@@ -376,6 +381,11 @@ impl Processor {
         limiter: &ValueLimiter,
         panic: bool,
     ) -> CedResult<()> {
+        if self.get_page_data()?.is_array() {
+            return Err(CedError::InvalidPageOperation(String::from(
+                "Cannot set limiter for virtual array",
+            )));
+        }
         let column = self
             .get_page_data_mut()?
             .try_get_column_index(column)
@@ -427,7 +437,7 @@ impl Processor {
     }
 
     /// Get virtual data as string form
-    pub fn get_data_as_text(&self) -> CedResult<String> {
+    pub fn get_page_as_string(&self) -> CedResult<String> {
         Ok(self.get_page_data()?.to_string())
     }
 

@@ -18,7 +18,6 @@ impl Preset {
         let mut instance = Self {
             list: HashMap::new(),
         };
-        println!("HERE?");
         if use_defualt {
             instance.append_default()?;
         }
@@ -64,7 +63,6 @@ impl Preset {
     }
 
     fn append_default(&mut self) -> CedResult<()> {
-        println!("WHAT?");
         let default = IntoIterator::into_iter([
             (
                 "text".to_owned(),
