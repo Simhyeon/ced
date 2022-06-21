@@ -13,16 +13,15 @@ dependencies = [
 
 [[package]]
 name = "ced"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "dcsv",
 ]
 
 [[package]]
 name = "dcsv"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "708018f722a65d03ccf4585053d33dfe23cd7da472bdf090975be0fb54e11930"
+version = "0.3.0"
+source = "git+https://github.com/simhyeon/dcsv?branch=dev#f2c4f5402470e2d9a66c4f748cbbc860c4a1e10d"
 dependencies = [
  "regex",
 ]

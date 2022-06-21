@@ -1,6 +1,6 @@
 [package]
 name = "ced"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 keywords = ["csv", "cli", "text-processing"]
@@ -21,4 +21,4 @@ path="src/cli/bin.rs"
 cli = []
 
 [dependencies]
-dcsv = { version = "0.2.0"}
+dcsv = { git="https://github.com/simhyeon/dcsv", branch="dev", version = "0.3.0"}
