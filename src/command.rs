@@ -50,7 +50,14 @@ pub enum CommandType {
     Schema,
     SchemaInit,
     SchemaExport,
+    History,
     None,
+}
+
+impl std::fmt::Display for CommandType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:#?}", self)
+    }
 }
 
 // TODO
@@ -94,6 +101,7 @@ impl FromStr for CommandType {
             "schema" | "s" => Self::Schema,
             "schema-init" | "si" => Self::SchemaInit,
             "schema-export" | "se" => Self::SchemaExport,
+            "history" | "y" => Self::History,
             _ => {
                 Self::None
 
@@ -153,7 +161,7 @@ const HISTORY_CAPACITY: usize = 16;
 pub struct CommandHistory {
     pub index: usize,
     newest_snapshot: Option<HistoryRecord>,
-    memento_history: Vec<HistoryRecord>,
+    pub(crate) memento_history: Vec<HistoryRecord>,
     history_capacity: usize,
 }
 
@@ -314,9 +322,10 @@ impl Processor {
             #[cfg(feature = "cli")]
             CommandType::LimitPreset => self.limit_preset(page_name, &command.arguments)?,
             CommandType::Execute => self.execute_from_file(&command.arguments)?,
+
             // NOTE
             // This is not handled by processor in current implementation
-            CommandType::Exit | CommandType::Undo | CommandType::Redo => (),
+            CommandType::Exit | CommandType::Undo | CommandType::Redo | CommandType::History => (),
         }
         Ok(())
     }
@@ -881,8 +890,12 @@ impl Processor {
                     line_ending = Some('\r');
                 }
 
+                // Remove entry if already exists
+                let page_name = &args[0];
+                self.remove_page(page_name);
+
                 self.import_from_file(
-                    Path::new(&args[0]),
+                    Path::new(page_name),
                     args[1].parse().map_err(|_| {
                         CedError::CommandError(format!(
                             "Given value \"{}\" should be a valid boolean value. ( has_header )",
@@ -1099,9 +1112,15 @@ impl Processor {
     fn print_column(&mut self, page_name: &str, args: &Vec<String>) -> CedResult<()> {
         let mut print_mode = "simple";
         if args.is_empty() {
-            return Err(CedError::CommandError(
-                "Cannot print column without name".to_string(),
-            ));
+            let columns = self
+                .get_page_data(page_name)?
+                .get_columns()
+                .iter()
+                .map(|c| c.name.as_str())
+                .collect::<Vec<_>>()
+                .join(",");
+            utils::write_to_stdout(&format!(": --{}-- :\n", columns))?;
+            return Ok(());
         }
 
         if args.len() >= 2 {
@@ -1231,21 +1250,35 @@ impl Processor {
         if args.is_empty() {
             self.add_limiter_prompt(page_name)?;
         } else {
-            if args.len() != 3 {
+            let args = if args.len() == 1 {
+                args[0].split(',').collect::<Vec<_>>()
+            } else {
                 return Err(CedError::CommandError(
                     "Insufficient arguments for limit".to_string(),
                 ));
+            };
+            if args.len() != LIMITER_ATTRIBUTE_LEN + 2 {
+                return Err(CedError::CommandError(
+                    "Insufficient arguments for limit, needs 6 values".to_string(),
+                ));
             }
-            let column_name = &args[0];
-            let source = args[1].split(',').collect::<Vec<_>>();
-            let panic = !args[2].parse::<bool>().map_err(|_| {
-                CedError::CommandError(
-                    "You need to feed boolean value for the force value".to_string(),
-                )
-            })?;
-            let limiter = ValueLimiter::from_line(&source)?;
 
-            self.set_limiter(page_name, column_name, &limiter, panic)?;
+            let column_name = args.first().unwrap();
+            let force_update = args.last().unwrap();
+
+            let force = if force_update.is_empty() {
+                true
+            } else {
+                force_update.parse::<bool>().map_err(|_| {
+                    CedError::CommandError(
+                        "You need to feed boolean value for the force value".to_string(),
+                    )
+                })?
+            };
+
+            let limiter = ValueLimiter::from_line(&args[1..=LIMITER_ATTRIBUTE_LEN])?;
+
+            self.set_limiter(page_name, column_name, &limiter, !force)?;
             self.log(&format!("Limited column \"{}\"\n", column_name))?;
         }
         Ok(())
