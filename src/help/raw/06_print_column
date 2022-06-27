@@ -1,10 +1,13 @@
-print-column, pl <COLUMN_NAME> <MODE>{Optional}
+print-column, pl <COLUMN_NAME>{Optional} <MODE>{Optional}
 	Print a column's information. Modes are following
 		- simple ( default )
 		- verbose,v 
 		- debug,d
 
+	Will print names of columns with empty arguments
+
 	e.g)
+		pl
 		pl 0
 		pl column_name
 		pl col debug

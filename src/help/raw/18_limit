@@ -2,6 +2,14 @@ limit, l <COLUMN: column>{Optional} <Attributes: Array> <OVERRIDE: bool>
 	Set limiter for column with interactive prompt. You can directly pass
 	limiter attributes if you want.
 
+	The limiter's attributes are followed 
+		- Column name { Mandatory }
+		- Column type ( Either "Text" or "Number" ) { Mandatory }
+		- Default value { Empty-able }
+		- Variants { Empty-able }
+		- Pattern { Empty-able }
+		- Force Update { Empty-able }
+
 	e.g)
 		limit 
-		limit column 'type,default,variant,pattern' true
+		limit 'column_name,type,default,variant,pattern,true'

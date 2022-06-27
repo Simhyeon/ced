@@ -1,0 +1,3 @@
+history, y
+	Print history of commands maxium count of history is decided by environment variable "CED_HISTORY_CAPACITY"
+
