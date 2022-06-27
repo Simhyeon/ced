@@ -45,8 +45,13 @@ pub(crate) fn read_stdin(strip_newline: bool) -> CedResult<String> {
     std::io::stdin()
         .read_line(&mut input)
         .map_err(|err| CedError::io_error(err, "Failed to read stdin from source"))?;
-    if strip_newline && (input.ends_with('\n') || input.ends_with("\r\n")) {
-        input = input.trim().to_owned();
+    if strip_newline {
+        // \r\n should come first because \n ⊂ \r\n
+        if input.ends_with("\r\n") {
+            input = input.strip_suffix("\r\n").unwrap().to_string();
+        } else if input.ends_with('\n') {
+            input = input.strip_suffix('\n').unwrap().to_string();
+        }
     }
     Ok(input)
 }
