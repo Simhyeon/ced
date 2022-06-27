@@ -114,13 +114,16 @@ print-row, pr <ROW NUMBER> <VIEWER>{Optional}
 		pr 0
 		pr 2 cat
 
-print-column, pl <COLUMN_NAME> <MODE>{Optional}
+print-column, pl <COLUMN_NAME>{Optional} <MODE>{Optional}
 	Print a column's information. Modes are following
 		- simple ( default )
 		- verbose,v 
 		- debug,d
 
+	Will print names of columns with empty arguments
+
 	e.g)
+		pl
 		pl 0
 		pl column_name
 		pl col debug
@@ -232,9 +235,17 @@ limit, l <COLUMN: column>{Optional} <Attributes: Array> <OVERRIDE: bool>
 	Set limiter for column with interactive prompt. You can directly pass
 	limiter attributes if you want.
 
+	The limiter's attributes are followed 
+		- Column name { Mandatory }
+		- Column type ( Either "Text" or "Number" ) { Mandatory }
+		- Default value { Empty-able }
+		- Variants { Empty-able }
+		- Pattern { Empty-able }
+		- Force Update { Empty-able }
+
 	e.g)
 		limit 
-		limit column 'type,default,variant,pattern' true
+		limit 'column_name,type,default,variant,pattern,true'
 limit-preset, lp <Column: Any> <Preset Name: String>
 	Set limiter from preset. You can define presets in $HOME/.ced_preset.csv or
 	%APPDATA%/.ced_preset.csv
@@ -280,6 +291,9 @@ undo, u
 
 redo, r
 	Redo an undid command
+
+history, y
+	Print history of commands maxium count of history is decided by environment variable "CED_HISTORY_CAPACITY"
 
 quit, q
 	Quit from a ced editor
