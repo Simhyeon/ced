@@ -204,6 +204,9 @@ impl CommandLoop {
         utils::write_to_stdout(&format!("{:?}\n", command))?;
 
         match command.command_type {
+            CommandType::History => {
+                self.print_history()?;
+            }
             CommandType::Undo | CommandType::Redo => {
                 if command.command_type == CommandType::Undo {
                     if self.history.is_empty() {
@@ -264,6 +267,18 @@ impl CommandLoop {
             }
         }
         Ok(())
+    }
+
+    /// Print history list
+    fn print_history(&self) -> CedResult<()> {
+        let print = self
+            .history
+            .memento_history
+            .iter()
+            .enumerate()
+            .map(|(idx, record)| format!("{} : {} \n", idx, record.command))
+            .collect::<String>();
+        utils::write_to_stdout(&print)
     }
 
     fn undo(&mut self, state_backup: Option<Page>) -> CedResult<()> {
