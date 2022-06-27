@@ -1,5 +1,6 @@
 use crate::cli::parse::{FlagType, Parser};
 use crate::command::{CommandHistory, CommandType};
+use crate::page::Page;
 use crate::CedError;
 use crate::{cli::help, utils, CedResult, Command, Processor};
 use std::str::FromStr;
@@ -205,8 +206,24 @@ impl CommandLoop {
         match command.command_type {
             CommandType::Undo | CommandType::Redo => {
                 if command.command_type == CommandType::Undo {
-                    self.undo()?;
+                    if self.history.is_empty() {
+                        return Ok(());
+                    }
+                    let backup = if self.history.is_newest() {
+                        // Add current snapshot if history if the newest
+                        Some(
+                            self.processor
+                                .get_page_data(&self.processor.get_cursor().unwrap())?
+                                .clone(),
+                        )
+                    } else {
+                        None
+                    };
+                    self.undo(backup)?;
                 } else {
+                    if self.history.is_empty() {
+                        return Ok(());
+                    }
                     self.redo()?;
                 }
                 return Ok(());
@@ -217,7 +234,7 @@ impl CommandLoop {
             | CommandType::Export
             | CommandType::Create
             | CommandType::Write
-            | CommandType::None(_)
+            | CommandType::None
             | CommandType::Schema
             | CommandType::SchemaInit
             | CommandType::SchemaExport
@@ -235,7 +252,7 @@ impl CommandLoop {
                     .get_cursor()
                     .ok_or_else(|| CedError::InvalidPageOperation("Page is empty".to_string()))?;
                 self.history
-                    .take_snapshot(self.processor.get_page_data(&cursor)?)
+                    .take_snapshot(self.processor.get_page_data(&cursor)?, command.command_type)
             }
         }
 
@@ -249,24 +266,32 @@ impl CommandLoop {
         Ok(())
     }
 
-    fn undo(&mut self) -> CedResult<()> {
-        if let Some(prev) = self.history.pop() {
+    fn undo(&mut self, state_backup: Option<Page>) -> CedResult<()> {
+        let undo_target = self.history.get_undo();
+        if let Some(history) = undo_target {
             let cursor = self
                 .processor
                 .get_cursor()
                 .ok_or_else(|| CedError::InvalidPageOperation("Page is empty".to_string()))?;
-            *self.processor.get_page_data_mut(&cursor)? = prev.clone();
+            *self.processor.get_page_data_mut(&cursor)? = history.data.clone();
+            utils::write_to_stdout(&format!("Undo \"{:#?}\"\n", history.command))?;
+        }
+        if undo_target.is_some() {
+            if let Some(backup) = state_backup {
+                self.history.set_current_backup(backup)
+            }
         }
         Ok(())
     }
 
     fn redo(&mut self) -> CedResult<()> {
-        if let Some(prev) = self.history.pull_redo() {
+        if let Some(history) = self.history.get_redo() {
             let cursor = self
                 .processor
                 .get_cursor()
                 .ok_or_else(|| CedError::InvalidPageOperation("Page is empty".to_string()))?;
-            *self.processor.get_page_data_mut(&cursor)? = prev;
+            *self.processor.get_page_data_mut(&cursor)? = history.data.clone();
+            utils::write_to_stdout(&format!("Redo \"{:#?}\"\n", history.command))?;
         }
         Ok(())
     }
