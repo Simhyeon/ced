@@ -1254,12 +1254,13 @@ impl Processor {
                 args[0].split(',').collect::<Vec<_>>()
             } else {
                 return Err(CedError::CommandError(
-                    "Insufficient arguments for limit".to_string(),
+                    "Incorrect arguments for limit".to_string(),
                 ));
             };
             if args.len() != LIMITER_ATTRIBUTE_LEN + 2 {
+                println!("{:#?}", args);
                 return Err(CedError::CommandError(
-                    "Insufficient arguments for limit, needs 6 values".to_string(),
+                    "Incorrect arguments for limit, needs 6 values".to_string(),
                 ));
             }
 
