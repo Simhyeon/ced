@@ -5,7 +5,7 @@ use crate::error::{CedError, CedResult};
 use crate::page::Page;
 use crate::processor::Processor;
 use crate::utils::{self, subprocess};
-use dcsv::{Column, Row, SCHEMA_HEADER};
+use dcsv::{Column, Row, LIMITER_ATTRIBUTE_LEN, SCHEMA_HEADER};
 use dcsv::{Value, ValueLimiter, ValueType};
 use std::io::Write;
 use std::str::FromStr;
@@ -13,7 +13,7 @@ use std::{ops::Sub, path::Path};
 use utils::DEFAULT_DELIMITER;
 
 /// Types of command
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum CommandType {
     #[cfg(feature = "cli")]
     Version,
@@ -50,7 +50,7 @@ pub enum CommandType {
     Schema,
     SchemaInit,
     SchemaExport,
-    None(String),
+    None,
 }
 
 // TODO
@@ -95,7 +95,7 @@ impl FromStr for CommandType {
             "schema-init" | "si" => Self::SchemaInit,
             "schema-export" | "se" => Self::SchemaExport,
             _ => {
-                Self::None(src.to_string())
+                Self::None
 
                 // TODO
                 // Disabled error branch for current compatiblity
@@ -146,22 +146,14 @@ enum CommandResult {
     Columns(Vec<Column>),
 }
 
-#[allow(dead_code)]
-struct CommandRecord {
-    command: Command,
-    command_result: CommandResult,
-}
-
-// Default history capacity double word
+// Default history capacity is a double word
 #[cfg(feature = "cli")]
 const HISTORY_CAPACITY: usize = 16;
 #[cfg(feature = "cli")]
 pub struct CommandHistory {
-    // TODO
-    // Preserved for command pattern
-    // history: Vec<Command>,
-    memento_history: Vec<Page>,
-    redo_history: Vec<Page>,
+    pub index: usize,
+    newest_snapshot: Option<HistoryRecord>,
+    memento_history: Vec<HistoryRecord>,
     history_capacity: usize,
 }
 
@@ -178,33 +170,89 @@ impl CommandHistory {
             HISTORY_CAPACITY
         };
         Self {
+            index: 0, // 0 should mean nothing rather than "first" element
+            newest_snapshot: None,
             memento_history: vec![],
-            redo_history: vec![],
             history_capacity: capacity,
         }
     }
 
-    pub(crate) fn take_snapshot(&mut self, data: &Page) {
-        self.memento_history.push(data.clone());
+    pub(crate) fn is_empty(&self) -> bool {
+        self.memento_history.is_empty()
+    }
+
+    // If index is equal to lenth than there is no undo operation took in place
+    pub(crate) fn is_newest(&self) -> bool {
+        self.index >= self.memento_history.len()
+    }
+
+    pub(crate) fn set_current_backup(&mut self, data: Page) {
+        self.newest_snapshot
+            .replace(HistoryRecord::new(data, CommandType::Undo));
+    }
+
+    pub(crate) fn take_snapshot(&mut self, data: &Page, command: CommandType) {
+        // Remove discarded changes
+        // User will lose all undo history after current index if user undid several steps and had
+        // done a new action
+        self.drain_history();
+
+        self.memento_history
+            .push(HistoryRecord::new(data.clone(), command));
         // You cannot redo if you have done something other than undo
-        self.redo_history.clear();
         if self.memento_history.len() > self.history_capacity {
             self.memento_history.rotate_left(1);
             self.memento_history.pop();
-        }
-    }
-
-    pub(crate) fn pop(&mut self) -> Option<&Page> {
-        if let Some(data) = self.memento_history.pop() {
-            self.redo_history.push(data);
-            self.redo_history.last()
         } else {
-            None
+            // Increase index according to history size increase
+            self.index += 1;
         }
     }
 
-    pub(crate) fn pull_redo(&mut self) -> Option<Page> {
-        self.redo_history.pop()
+    fn drain_history(&mut self) {
+        if !self.memento_history.is_empty() && self.index < self.memento_history.len() {
+            self.memento_history.drain(self.index..);
+            self.newest_snapshot.take();
+        }
+    }
+
+    pub(crate) fn get_undo(&mut self) -> Option<&HistoryRecord> {
+        // Cannot go backward because index is 0
+        if self.index == 0 {
+            None
+        } else {
+            self.index -= 1;
+            let target_index = self.index;
+            self.memento_history.get(target_index)
+        }
+    }
+
+    pub(crate) fn get_redo(&mut self) -> Option<&HistoryRecord> {
+        match self.index {
+            x if x == self.memento_history.len() => None,
+            y if y == self.memento_history.len() - 1 => {
+                self.index += 1;
+                self.newest_snapshot.as_ref()
+            }
+            _ => {
+                self.index += 1;
+                let target_index = self.index;
+                self.memento_history.get(target_index)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "cli")]
+pub(crate) struct HistoryRecord {
+    pub(crate) data: Page,
+    pub(crate) command: CommandType,
+}
+
+#[cfg(feature = "cli")]
+impl HistoryRecord {
+    pub fn new(data: Page, command: CommandType) -> Self {
+        Self { data, command }
     }
 }
 
@@ -220,9 +268,7 @@ impl Processor {
             CommandType::Version => help::print_version(),
             #[cfg(feature = "cli")]
             CommandType::Help => self.print_help_from_args(&command.arguments)?,
-            CommandType::None(src) => {
-                return Err(CedError::CommandError(format!("No such command \"{src}\"")))
-            }
+            CommandType::None => return Err(CedError::CommandError("No such command".to_string())),
             CommandType::Import => {
                 #[cfg(feature = "cli")]
                 self.drop_pages()?;
@@ -942,7 +988,7 @@ impl Processor {
         };
         let success = self.overwrite_to_file(page_name, cache)?;
         if success {
-            self.log("File overwritten successfully")?;
+            self.log("File overwritten successfully\n")?;
         } else {
             self.log(": No source file to write. Use export instead :\n")?;
         }
@@ -1200,7 +1246,7 @@ impl Processor {
             let limiter = ValueLimiter::from_line(&source)?;
 
             self.set_limiter(page_name, column_name, &limiter, panic)?;
-            self.log(&format!("Limited column \"{}\"", column_name))?;
+            self.log(&format!("Limited column \"{}\"\n", column_name))?;
         }
         Ok(())
     }
@@ -1258,37 +1304,76 @@ impl Processor {
     }
 
     fn add_limiter_prompt(&mut self, page_name: &str) -> CedResult<()> {
-        utils::write_to_stdout("Column = ")?;
-        let column = utils::read_stdin(true)?;
-
+        let limiter_prompts = vec![
+            "Column = ",
+            "Type (Text|Number) = ",
+            "Default = ",
+            "Variants(a b c) = ",
+            "Pattern = ",
+            "Force update(default=true) = ",
+        ];
         let mut limiter_attributes = vec![];
-        utils::write_to_stdout("Type (Text|Number) = ")?;
-        limiter_attributes.push(utils::read_stdin(true)?);
 
-        utils::write_to_stdout("Default = ")?;
-        limiter_attributes.push(utils::read_stdin(true)?);
+        // Print columns before limiter prompt
+        let page = self.pages.get(page_name);
+        match page {
+            Some(page) => {
+                let columns = page.get_columns();
+                if columns.is_empty() {
+                    utils::write_to_stdout(": Csv is empty : \n")?;
+                    return Ok(());
+                }
 
-        utils::write_to_stdout("Variants(a b c) = ")?;
-        limiter_attributes.push(utils::read_stdin(true)?);
+                let columns = columns
+                    .iter()
+                    .map(|c| c.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(",");
+                utils::write_to_stdout(&format!(": --{}-- :\n", columns))?;
+            }
+            None => {
+                utils::write_to_stdout(": Csv is empty : \n")?;
+                return Ok(());
+            }
+        }
 
-        utils::write_to_stdout("Pattern = ")?;
-        limiter_attributes.push(utils::read_stdin(true)?);
+        for prompt in limiter_prompts {
+            utils::write_to_stdout(prompt)?;
+            let input = utils::read_stdin(true)?;
 
-        utils::write_to_stdout("Force update(default=true) = ")?;
-        let force = utils::read_stdin(true)?;
+            // Interrupt
+            if input == DEFAULT_DELIMITER {
+                return Ok(());
+            }
 
-        let force = if force.is_empty() {
+            limiter_attributes.push(input);
+        }
+
+        // +2 is necessary because given input also includes target column & force update
+        if limiter_attributes.len() != LIMITER_ATTRIBUTE_LEN + 2 {
+            return Err(CedError::InvalidPageOperation(format!(
+                "Limit needs \"{}\" arguments but given \"{}\"",
+                LIMITER_ATTRIBUTE_LEN + 2,
+                limiter_attributes.len()
+            )));
+        }
+
+        let column_name = limiter_attributes.first().unwrap();
+        let force_update = limiter_attributes.last().unwrap();
+
+        let force = if force_update.is_empty() {
             true
         } else {
-            force.parse::<bool>().map_err(|_| {
+            force_update.parse::<bool>().map_err(|_| {
                 CedError::CommandError(
                     "You need to feed boolean value for the force value".to_string(),
                 )
             })?
         };
 
-        let limiter = ValueLimiter::from_line(&limiter_attributes)?;
-        self.set_limiter(page_name, &column, &limiter, !force)?;
+        let limiter = ValueLimiter::from_line(&limiter_attributes[1..=LIMITER_ATTRIBUTE_LEN])?;
+        self.set_limiter(page_name, column_name, &limiter, !force)?;
+        self.log(&format!("Limited column \"{}\"\n", column_name))?;
         Ok(())
     }
 }
