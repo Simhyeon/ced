@@ -132,6 +132,13 @@ impl Processor {
         }
     }
 
+    /// Remove page with given name
+    ///
+    /// This doesn't panic and silent do nothing if page name is non-existent
+    pub fn remove_page(&mut self, page_name: &str) {
+        self.pages.remove_entry(page_name);
+    }
+
     /// Check if processor contains a page
     pub fn contains_page(&self, page: &str) -> bool {
         self.pages.contains_key(page)
@@ -199,9 +206,6 @@ impl Processor {
             )
         })?;
         let page_name = &path.as_ref().display().to_string();
-
-        // Remove exsiting entry for convenience.
-        self.pages.remove_entry(page_name);
 
         self.add_page(page_name, &content, has_header, line_ending, raw_mode)?;
 
