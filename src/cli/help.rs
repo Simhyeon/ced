@@ -53,7 +53,7 @@ pub fn print_command_help(command: CommandType) {
         CommandType::Schema => include_str!("../help/raw/19_schema"),
         CommandType::SchemaInit => include_str!("../help/raw/21_schema_init"),
         CommandType::SchemaExport => include_str!("../help/raw/20_schema_export"),
-        CommandType::None(_) => "No such command to print a help message.\n",
+        CommandType::None => "No such command to print a help message.\n",
     };
     utils::write_to_stdout(out).expect("Failed to write to terminal");
 }
