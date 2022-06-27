@@ -1,11 +1,18 @@
 ### TODO
 
-* [ ] Loop variants are all not properly parsing quoted values
-* [ ] Limiter prompt doesn't respect quote rules
+* [x] Better show some needed informations before some specific loop operation starts
+* [x] Limit loop is very strange.
+* [x] Show undo/redo with  what has been reverted
+* [x] Limit without loop is very unstable...
+* [x] Prompt for edit-row-multiple
 * [ ] New command
-	* [ ] Drop
-	* [ ] Trim all
-* [ ] Invalid command type occurs program panic which is not desirable
+	* [x] Show History of things
+	* [-] Drop : Not necessarily needed, THis is handled by command loop logic
+	* [-] Add column loop : Not necessarily needed
+	- Possibly...
+		* [ ] Trim all + Strip Double quote
+		* [ ] Undo/Redo multiple times
+
 * [ ] Check limiter preset
 * [ ] Create test.rs for easier testing
 
@@ -159,3 +166,4 @@ Make it swappable so that command pattern can be used later.
 	* [x] Import as an array Command
 * [x] Previously import always added but never shrinked read csv data
 
+* [x] Invalid command type occurs program panic which is not desirable

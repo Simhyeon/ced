@@ -1,3 +1,14 @@
+# 0.2.2
+
+- BugFix : Limit command loop was not interruptable
+- BugFix : Limit command one-liner value didn't respect quote rules
+- BugFix : Limit command loop input trimmed all whitespaces
+- BugFix : Undo and redo mechanics were inconsistent
+- Ergono : Line number prompt for edit row multiple
+- Ergono : Limit command show columns before prompt
+- Ergono : Print-column now allows no argument case
+- Featur : New command history
+
 # 0.2.1
 
 - Hotfix : Ced panicked when given invalid command type
